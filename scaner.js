@@ -4,14 +4,10 @@ var path = require('path')
 
 
 var scanner = {
+	//путь к папке Songs
 	Songspath: 'H:\\Songs',
-
-	arrayFiles: [],
-	BeatmapsDB: [],
-
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
-
 	//удаляет спрайты/сториборды карт
 	deletesprites: 1,
 	//удаляет видео карт
@@ -33,6 +29,8 @@ var scanner = {
 
 	//пока не работает
 	//deletebeatmapsdublicates: 0,
+
+	BeatmapsDB: [],
 
 	checkFileExists: async function(filepath,filetype){
 	  	try
