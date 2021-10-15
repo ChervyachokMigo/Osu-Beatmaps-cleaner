@@ -15,9 +15,9 @@ var scanner = {
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
 	deleteFilesNotInBeatmap: 1,
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
-	checkexsitsbg: 0,
+	checkexsitsbg: 1,
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
-	checkaudioexists: 0,
+	checkaudioexists: 1,
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
@@ -167,15 +167,19 @@ var scanner = {
 			   										tempdata_mode = tempdata_mode[1].trim()
 			   										if (tempdata_mode == "0" && this.deletestd == 1){
 			   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
+			   											await fs.unlink(filePathTemp+"\\"+file2)
 			   										}
 			   										if (tempdata_mode == "1" && this.deletetaiko == 1){
 			   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
+			   											await fs.unlink(filePathTemp+"\\"+file2)
 			   										}
 			   										if (tempdata_mode == "2" && this.deletectb == 1){
 			   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
+			   											await fs.unlink(filePathTemp+"\\"+file2)
 			   										}
 			   										if (tempdata_mode == "3" && this.deletemania == 1){
 			   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
+			   											await fs.unlink(filePathTemp+"\\"+file2)
 			   										}
 			   									}
 			   								}
@@ -367,6 +371,8 @@ var scanner = {
 			} 
    		}
 
+/////////////////////////
+
    /*	if (this.deletebeatmapsdublicates == 1){
     //fs.writeFile('beatmapsDB.json',JSON.stringify(this.BeatmapsDB));
     const SongsDir2 = await fs.readdir(this.Songspath);
@@ -432,6 +438,8 @@ var scanner = {
    				}
 	   		}
 	   	}*/
+
+/////////////
 
 	}
 
