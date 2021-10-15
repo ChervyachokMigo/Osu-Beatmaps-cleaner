@@ -14,16 +14,17 @@ var scanner = {
 	deletesprites: 1,
 	deletevideos: 1,
 
+	deleteFilesNotInBeatmap: 0,
+
 	checkexsitsbg: 0,
 	checkaudioexists: 0,
-	checkNotInBeatmapFiles: 0,
 
 	deletestd: 0,
 	deletetaiko: 1,
 	deletemania: 1,
 	deletectb: 1,
 
-	deletebeatmapsdublicates: 0,
+	//deletebeatmapsdublicates: 0,
 
 	checkFileExists: async function(filepath,filetype){
 	  	try
@@ -130,7 +131,7 @@ var scanner = {
 		   					if (path.extname(file2)=='.osu' || path.extname(file2)=='.osb'){
 		   						//log ('reading '+filePathTemp+"\\"+file2)
 			   						var tempdata = await fs.readFile((filePathTemp+"\\"+file2).replace(/\\+/g, '\\'),'utf8')
-			   						if (this.checkNotInBeatmapFiles == 1){
+			   						if (this.deleteFilesNotInBeatmap == 1){
 				   						otherFiles.push(file2)
 				   					}
 
@@ -173,14 +174,14 @@ var scanner = {
 			   									}
 			   								}
 
-			   								if (this.checkaudioexists == 1 || this.checkNotInBeatmapFiles == 1){
+			   								if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1){
 			   									if(tempdata[i].startsWith("AudioFilename:") === true){
 														var tempdata_audio = tempdata[i].split(":")
 														var fullpathaudio = filePathTemp+"\\"+tempdata_audio[1].trim()
 														if (this.checkaudioexists == 1){
 															scanner.checkFileExists(fullpathaudio,'audio')
 														}
-														if (this.checkNotInBeatmapFiles == 1){
+														if (this.deleteFilesNotInBeatmap == 1){
 															otherFiles.push(tempdata_audio[1].trim())
 														}
 													}
@@ -242,7 +243,7 @@ var scanner = {
 
 				   										//await fs.appendFile('events.txt', tempdata[i]);
 
-				   										if (this.deletesprites == 1 || this.checkNotInBeatmapFiles == 1){
+				   										if (this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
 					   										if (tempdata[i].startsWith("Animation,") === true || 
 						   									tempdata[i].startsWith("Sprite,") === true || 
 						   									tempdata[i].startsWith("Sample,") === true ||	
@@ -255,7 +256,7 @@ var scanner = {
 																}
 															}
 
-															if (this.deletevideos== 1 || this.checkNotInBeatmapFiles == 1){
+															if (this.deletevideos== 1 || this.deleteFilesNotInBeatmap == 1){
 																if (tempdata[i].startsWith("1,") === true ||//video
 																tempdata[i].startsWith("Video,") === true){
 																	//await fs.appendFile('events.txt', tempdata[i]);
@@ -265,7 +266,7 @@ var scanner = {
 																}
 															}
 
-															if (this.checkexsitsbg == 1 || this.deletesprites == 1 || this.checkNotInBeatmapFiles == 1){
+															if (this.checkexsitsbg == 1 || this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
 					   										if(tempdata[i].startsWith("0,") === true //bg
 																){
 					   											var tempdata_bg = tempdata[i].split(",")
@@ -350,7 +351,7 @@ var scanner = {
 		   				await fs.rmdir(filePathTemp, { recursive: true })
 		   			}
 
-		   			if (this.checkNotInBeatmapFiles == 1){
+		   			if (this.deleteFilesNotInBeatmap == 1){
 							allFolderFiles = tempSprites.concat(tempBgs).concat(tempVideos).concat(otherFiles)
 							await this.checkInNotBeatmapFilesRecursive(filePathTemp,"",allFolderFiles)
 						}
