@@ -4,7 +4,7 @@ var path = require('path')
 
 
 var scanner = {
-	//путь к папке Songs
+	//путь к папке Songs (обратный слеш в пути экранируется еще одним - \\ )
 	Songspath: 'H:\\Songs',
 
 	///////////////////
@@ -13,11 +13,11 @@ var scanner = {
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
 	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 1,
+	deletesprites: 0,
 	//удаляет видео карт
-	deletevideos: 1,
+	deletevideos: 0,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 1,
+	deleteFilesNotInBeatmap: 0,
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
 	checkexsitsbg: 1,
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
@@ -25,11 +25,11 @@ var scanner = {
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
-	deletetaiko: 1,
+	deletetaiko: 0,
 	//удалить карты мании
-	deletemania: 1,
+	deletemania: 0,
 	//удалить карты catch the beat
-	deletectb: 1,
+	deletectb: 0,
 
 	//пока не работает
 	//deletebeatmapsdublicates: 0,
