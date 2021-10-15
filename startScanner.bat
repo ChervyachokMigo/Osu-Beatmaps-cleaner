@@ -1,0 +1,2 @@
+node scaner.js
+pause
