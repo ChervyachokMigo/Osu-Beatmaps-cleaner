@@ -13,11 +13,11 @@ var scanner = {
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
 	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 0,
+	deletesprites: 1,
 	//удаляет видео карт
-	deletevideos: 0,
+	deletevideos: 1,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 0,
+	deleteFilesNotInBeatmap: 1,
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
 	checkexsitsbg: 1,
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
@@ -25,11 +25,11 @@ var scanner = {
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
-	deletetaiko: 0,
+	deletetaiko: 1,
 	//удалить карты мании
-	deletemania: 0,
+	deletemania: 1,
 	//удалить карты catch the beat
-	deletectb: 0,
+	deletectb: 1,
 
 	//пока не работает
 	//deletebeatmapsdublicates: 0,
@@ -115,7 +115,7 @@ var scanner = {
 	   		itemnum++
 
 	  		if (file !== undefined && file !== null && file !== '' && file !== '.' && file !== '..' ){
-	  			var filePathTemp = (this.Songspath+'\\'+file).replace(/\\+/g, '\\')
+	  			var filePathTemp = (this.Songspath+'\\'+file).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
 		   	 	var fileTemp = await fs.lstat(filePathTemp)
 
 		   		if (fileTemp.isDirectory()){
@@ -140,7 +140,7 @@ var scanner = {
 		   					
 		   					if (path.extname(file2)=='.osu' || path.extname(file2)=='.osb'){
 		   						//log ('reading '+filePathTemp+"\\"+file2)
-			   						var tempdata = await fs.readFile((filePathTemp+"\\"+file2).replace(/\\+/g, '\\'),'utf8')
+			   						var tempdata = await fs.readFile((filePathTemp+"\\"+file2).replace(/\/+/g, '\\').replace(/\\+/g, '\\'),'utf8')
 			   						if (this.deleteFilesNotInBeatmap == 1){
 				   						otherFiles.push(file2)
 				   					}
@@ -191,12 +191,12 @@ var scanner = {
 			   								if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1){
 			   									if(tempdata[i].startsWith("AudioFilename:") === true){
 														var tempdata_audio = tempdata[i].split(":")
-														var fullpathaudio = filePathTemp+"\\"+tempdata_audio[1].trim()
+														var fullpathaudio = (filePathTemp+"\\"+tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
 														if (this.checkaudioexists == 1){
 															scanner.checkFileExists(fullpathaudio,'audio')
 														}
 														if (this.deleteFilesNotInBeatmap == 1){
-															otherFiles.push(tempdata_audio[1].trim())
+															otherFiles.push((tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\'))
 														}
 													}
 			   								}
@@ -265,8 +265,8 @@ var scanner = {
 																tempdata[i].startsWith("5,") === true  ||
 																tempdata[i].startsWith("6,") === true ){
 					   											var tempdata_sprite = tempdata[i].split(",")
-					   											tempdata_sprite[3] = tempdata_sprite[3].replace(/"/g, "").trim()
-															    tempSprites.push(tempdata_sprite[3])
+					   											tempdata_sprite[3] = tempdata_sprite[3].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim()
+															   	tempSprites.push(tempdata_sprite[3])
 																}
 															}
 
@@ -275,8 +275,8 @@ var scanner = {
 																tempdata[i].startsWith("Video,") === true){
 																	//await fs.appendFile('events.txt', tempdata[i]);
 																	var tempdata_video = tempdata[i].split(",")
-					   											tempdata_video[2] = tempdata_video[2].replace(/"/g, "").trim()
-															    tempVideos.push(tempdata_video[2])
+					   											tempdata_video[2] = tempdata_video[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim()
+															   	tempVideos.push(tempdata_video[2])
 																}
 															}
 
@@ -284,8 +284,8 @@ var scanner = {
 					   										if(tempdata[i].startsWith("0,") === true //bg
 																){
 					   											var tempdata_bg = tempdata[i].split(",")
-					   											tempdata_bg[2] = tempdata_bg[2].replace(/"/g, "").trim()
-														      tempBgs.push(tempdata_bg[2])
+					   											tempdata_bg[2] = tempdata_bg[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim()
+														      	tempBgs.push(tempdata_bg[2])
 																}
 															}
 
@@ -339,7 +339,7 @@ var scanner = {
 								return !spriteisbg
 							})
 							for (var tempsprite of tempSprites){
-								var fullpathprite = filePathTemp+"\\"+tempsprite
+								var fullpathprite = (filePathTemp+"\\"+tempsprite).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
 					      scanner.checkFileExists(fullpathprite,'sprite')
 							    
 							}
@@ -347,7 +347,7 @@ var scanner = {
 
 						if (this.deletevideos== 1){
 							for (var tempvideo of tempVideos){
-								var fullpathvideo = filePathTemp+"\\"+tempvideo
+								var fullpathvideo = (filePathTemp+"\\"+tempvideo).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
 					      scanner.checkFileExists(fullpathvideo,'video')
 							    
 							}
@@ -355,7 +355,7 @@ var scanner = {
 
 						if (this.checkexsitsbg == 1){
 							for (var tempBg of tempBgs){
-								var fullpathbg = filePathTemp+"\\"+tempBg
+								var fullpathbg = (filePathTemp+"\\"+tempBg).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
 								scanner.checkFileExists(fullpathbg,'bg')
 							}
 						}
