@@ -9,21 +9,29 @@ var scanner = {
 	arrayFiles: [],
 	BeatmapsDB: [],
 
+	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
 
+	//удаляет спрайты/сториборды карт
 	deletesprites: 1,
+	//удаляет видео карт
 	deletevideos: 1,
-
-	deleteFilesNotInBeatmap: 0,
-
+	//удаляет скины, хитсаунды и файлы не относящиеся к карте
+	deleteFilesNotInBeatmap: 1,
+	//проверка отсутствующих бекграундов, результаты будут в txt файле
 	checkexsitsbg: 0,
+	//проверка отсутствующих аудио файлов, результаты будут в txt файле
 	checkaudioexists: 0,
-
+	//удалить все карты стандартной осу
 	deletestd: 0,
+	//удалить карты тайко
 	deletetaiko: 1,
+	//удалить карты мании
 	deletemania: 1,
+	//удалить карты catch the beat
 	deletectb: 1,
 
+	//пока не работает
 	//deletebeatmapsdublicates: 0,
 
 	checkFileExists: async function(filepath,filetype){
