@@ -12,12 +12,12 @@ var scanner = {
 	///////////////////
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
-	//удаляет спрайты/сториборды карт
-	deletesprites: 0,
+	//удаляет спрайты/сториборды карт и часть хитсаундов
+	deletesprites: 1,
 	//удаляет видео карт
-	deletevideos: 0,
+	deletevideos: 1,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 0,
+	deleteFilesNotInBeatmap: 1,
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
 	checkexsitsbg: 1,
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
@@ -25,11 +25,11 @@ var scanner = {
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
-	deletetaiko: 0,
+	deletetaiko: 1,
 	//удалить карты мании
-	deletemania: 0,
+	deletemania: 1,
 	//удалить карты catch the beat
-	deletectb: 0,
+	deletectb: 1,
 
 	//пока не работает
 	//deletebeatmapsdublicates: 0,
