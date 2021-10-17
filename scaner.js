@@ -49,7 +49,7 @@ var scanner = {
 	//поиск дубликатов
 	deletebeatmapsdublicates: 1,
 
-	debug: 1,
+	debug: 0,
 
 	BeatmapsDB: [],
 
