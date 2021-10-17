@@ -34,7 +34,7 @@ var scanner = {
 	//пока не работает
 	deletebeatmapsdublicates: 1,
 
-	debug: 1,
+	debug: 0,
 
 	BeatmapsDB: [],
 
@@ -122,11 +122,12 @@ var scanner = {
 
  		for (const file of SongsDir){
 
- 			if (itemnum % (SongsDir.length/10000) < 1 ){
- 				//process.stdout.write('\033c')
- 				itemnumproc = Math.trunc(itemnum / SongsDir.length * 10000) / 100
-	   	 		log ( itemnumproc + "%" )
-	   	 	}
+			if (itemnum % (SongsDir.length/1000) < 1 ){
+ 				process.stdout.write('\033c')
+ 				itemnumproc = Math.trunc(itemnum / SongsDir.length * 1000) / 100
+ 				log ("Processing...")
+		 		log ( itemnumproc + "%" )
+			}
 	   	 
 	   		itemnum++
 
@@ -326,8 +327,10 @@ var scanner = {
 								  ////////////
 									if (this.deletebeatmapsdublicates == 1){
 										if (path.extname(file2)=='.osu'){
-											if ( tempdata_beatmapid !== "0" &&  tempdata_beatmapsetid !=="-1" && tempdata_beatmapsetid !=="-2" ){
+											if ( tempdata_beatmapid === "0" ||  tempdata_beatmapsetid ==="-1" || tempdata_beatmapsetid ==="-2" ){
 
+												
+											}else {
 												var NewBeatmap = {
 													"BeatmapID":tempdata_beatmapid,
 													"BeatmapSetID":tempdata_beatmapsetid,
@@ -335,7 +338,7 @@ var scanner = {
 												}
 
 												this.BeatmapsDB.push(NewBeatmap)
-											}else {
+												
 												/*log (tempdata_beatmapid)
 												log(tempdata_beatmapsetid)
 												log(tempdatafilename)*/
@@ -529,9 +532,13 @@ var scanner = {
 /////////////
 
 		if (this.deletebeatmapsdublicates == 1){
-			log ("under "+this.BeatmapsDB.length)
+			//log ("To unique "+this.BeatmapsDB.length)
+			
 			var beatmapsDB_sorting = []
 			var beatmapsDB_dublicates = []
+			var el_num = 0
+			var el_num_proc = 0
+			var BeatmapsDB_length = this.BeatmapsDB.length
 			this.BeatmapsDB.filter(function(el){
 				var i = beatmapsDB_sorting.findIndex(x=>(x.BeatmapID === el.BeatmapID && x.tempdata_beatmapsetid === el.tempdata_beatmapsetid))
 				if(i <= -1){
@@ -539,15 +546,30 @@ var scanner = {
 				} else {
 					beatmapsDB_dublicates.push(el)
 				}
+				if (el_num % (BeatmapsDB_length/1000) < 1 ){
+ 				process.stdout.write('\033c')
+ 				el_num_proc = Math.trunc(el_num / BeatmapsDB_length * 1000) / 100
+ 					log ("Finding dublicates...")
+	   	 		log ( el_num_proc + "%" )
+	   	 	}
+				el_num++
+
 				return null;
 			})
 			this.BeatmapsDB = beatmapsDB_sorting
-			log ("after "+this.BeatmapsDB.length)
-			log ("after "+beatmapsDB_dublicates.length)
-			fs.writeFile('BeatmapsDB.json',JSON.stringify(this.BeatmapsDB));
-			fs.writeFile('beatmapsDB_dublicates.json',JSON.stringify(beatmapsDB_dublicates));
+			//log ("Uniques "+this.BeatmapsDB.length)
+			log ("Dublicated finded: "+beatmapsDB_dublicates.length)
+			//fs.writeFile('BeatmapsDB.json',JSON.stringify(this.BeatmapsDB));
+			//fs.writeFile('beatmapsDB_dublicates.json',JSON.stringify(beatmapsDB_dublicates));
 
 			//second cycle
+			for (var dublicated_beatmap of beatmapsDB_dublicates){
+				if (this.debug==0){
+					await fs.unlink(this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
+				}
+				await fs.appendFile('deleted_dublicated_files.txt', this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
+			}
+			log ("All Dublicated Deleted.")
 
 		}	//end if deletebeatmapdublicates
 
