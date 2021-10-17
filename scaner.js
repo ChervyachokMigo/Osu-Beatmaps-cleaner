@@ -29,28 +29,27 @@ var scanner = {
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
 	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 0,
+	deletesprites: 1,
 	//удаляет видео карт
-	deletevideos: 0,
+	deletevideos: 1,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 0,
+	deleteFilesNotInBeatmap: 1,
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
-	checkexsitsbg: 0,
+	checkexsitsbg: 1,
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
-	checkaudioexists: 0,
+	checkaudioexists: 1,
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
-	deletetaiko: 0,
+	deletetaiko: 1,
 	//удалить карты мании
-	deletemania: 0,
+	deletemania: 1,
 	//удалить карты catch the beat
-	deletectb: 0,
-
-	//пока не работает
+	deletectb: 1,
+	//поиск дубликатов
 	deletebeatmapsdublicates: 1,
 
-	debug: 0,
+	debug: 1,
 
 	BeatmapsDB: [],
 
@@ -143,6 +142,32 @@ var scanner = {
 			if (itemnum % (SongsDir.length/1000) < 1 ){
  				process.stdout.write('\033c')
  				itemnumproc = Math.trunc(itemnum / SongsDir.length * 1000) / 10
+ 				log ("[Tasks]")
+ 				if (this.deletesprites == 1){
+ 					log ("Delete storyboards")
+ 				}
+ 				if (this.deletevideos == 1){
+ 					log ("Delete videos")
+ 				}
+ 				if (this.deleteFilesNotInBeatmap == 1){
+ 					log ("Delete skins, hitsounds")
+ 				}
+ 				if (this.deletestd == 1){
+ 					log ("Delete osu!standart maps")
+ 				}
+ 				if (this.deletetaiko == 1){
+ 					log ("Delete osu!taiko maps")
+ 				}
+ 				if (this.deletemania == 1){
+ 					log ("Delete osu!mania maps")
+ 				}
+ 				if (this.deletectb == 1){
+ 					log ("Delete osu!catch the beat maps")
+ 				}
+ 				if (this.deleteEmptyDir == 1){
+ 					log ("Delete empty dirs")
+ 				}
+ 				log ("")
  				log ("Processing...")
 		 		PrintProcents(itemnumproc)
 			}
@@ -393,9 +418,7 @@ var scanner = {
 		   			tempSprites = tempSprites.filter(function(elem, pos) {
 						    return tempSprites.indexOf(elem) == pos;
 						})
-						/*tempBgs = tempBgs.filter(function(elem, pos) {
-						    return tempBgs.indexOf(elem) == pos;
-						})*/
+						
 						tempVideos = tempVideos.filter(function(elem, pos) {
 						    return tempVideos.indexOf(elem) == pos;
 						})
@@ -478,81 +501,11 @@ var scanner = {
 
 		   		}
 			} 
-   		}
+   	}
 
 /////////////////////////
 
-   /*	if (this.deletebeatmapsdublicates == 1){
-    //fs.writeFile('beatmapsDB.json',JSON.stringify(this.BeatmapsDB));
-    const SongsDir2 = await fs.readdir(this.Songspath);
-	itemnum = 0
-  	itemnumproc = 0
-    for (const file4 of SongsDir2){
-
-		if (itemnum % (SongsDir.length/10000) < 1 ){
-			process.stdout.write('\033c')
-			itemnumproc = Math.trunc(itemnum / SongsDir.length * 10000) / 100
-	   	 	log ( "cheking dublicates: "+ itemnumproc + "%" )
-	   	 }
-	   	 
-	   	itemnum++
-
-  		if (file !== undefined && file !== null && file !== '' && file !== '.' && file !== '..' ){
-  			filePathTemp = (this.Songspath+'\\'+file).replace(/\\+/g, '\\')
-	   	 	fileTemp = await fs.lstat(filePathTemp)
-
-	   		if (fileTemp.isDirectory()){
-
-	   			const DirTemp3 = await fs.readdir(filePathTemp)
-	   			for (file2 of DirTemp3){
-   					if (file2 !== undefined && file2 !== null && file2 !== '' && file2 !== '.' && file2 !== '..' ){
-		   					
-	   					if (path.extname(file2)=='.osu' || path.extname(file2)=='.osb'){
-		   						
-	   						var tempdata2 = await fs.readFile((filePathTemp+"\\"+file2).replace(/\\+/g, '\\'),'utf8')
-			   						
-			   				tempdata2 = tempdata2.toString().split("\n");
-			   						
-			   				for(i in tempdata2) {
-   								if (this.deletebeatmapsdublicates == 1){
-
-   									if(tempdata2[i].startsWith("BeatmapID:")){
-   										var tempdata_beatmapid_check  = tempdata2[i].split(":")
-   										tempdata_beatmapid_check  =  tempdata_beatmapid_check[1].trim()
-
-   									}
-   									if(tempdata2[i].startsWith("BeatmapSetID:")){
-   										var tempdata_beatmapsetid_check = tempdata2[i].split(":")
-   										tempdata_beatmapsetid_check  =  tempdata_beatmapsetid_check [1].trim()
-   									}
-   									var tempdatafilename_check  = (file+"\\"+file2).replace(/\\+/g, '\\')
-   									
-   								}
-   							}
-
-   							if (this.deletebeatmapsdublicates == 1){
-						    	if (tempdata_beatmapid_check  !== "0" || tempdata_beatmapsetid_check  !== "-1"){
-							    	
-							    	var isBeatmapDup = this.BeatmapsDB.filter(function(el){
-							    		return tempdata_beatmapid_check === el.BeatmapID && tempdata_beatmapsetid_check === el.BeatmapSetID
-							    	})
-
-							    	log (isBeatmapDup)
-			   						
-			   					}
-		   					}
-		   				}
-   						}}
-   					}
-   				}
-	   		}
-	   	}*/
-
-/////////////
-
-		if (this.deletebeatmapsdublicates == 1){
-			//log ("To unique "+this.BeatmapsDB.length)
-			
+		if (this.deletebeatmapsdublicates == 1){			
 			var beatmapsDB_sorting = []
 			var beatmapsDB_dublicates = []
 			var el_num = 0
@@ -571,6 +524,9 @@ var scanner = {
 				}
 				if (el_num % (BeatmapsDB_length/1000) < 1 ){
  					process.stdout.write('\033c')
+ 					log ("[Tasks]")
+ 					log ("Delete dublicates")
+ 					log (" ")
  					el_num_proc = Math.trunc(el_num / BeatmapsDB_length * 1000) / 10
  					log ("Finding dublicates...")
 	   	 		PrintProcents(el_num_proc)
@@ -580,12 +536,11 @@ var scanner = {
 				return null;
 			})
 			this.BeatmapsDB = beatmapsDB_sorting
-			//log ("Uniques "+this.BeatmapsDB.length)
+
 			log ("Dublicated finded: "+beatmapsDB_dublicates.length)
 			//fs.writeFile('BeatmapsDB.json',JSON.stringify(this.BeatmapsDB));
 			//fs.writeFile('beatmapsDB_dublicates.json',JSON.stringify(beatmapsDB_dublicates));
 
-			//second cycle
 			for (var dublicated_beatmap of beatmapsDB_dublicates){
 				if (this.debug==0){
 					await fs.unlink(this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
