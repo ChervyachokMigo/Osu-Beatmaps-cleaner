@@ -2,6 +2,22 @@ var log = console.log.bind(console)
 var fs = require('fs').promises
 var path = require('path')
 
+var progressbar = 					""
+var progressbar_empty_defaut = 	"▄▄▄▄▄▄▄▄▄▄"
+var progressbar_empty = progressbar_empty_defaut
+
+
+function PrintProcents(procent){
+
+	if ((procent*10 % 100) < 1){
+		progressbar_empty = progressbar_empty.substring(0, progressbar_empty.length - 1);
+		progressbar = progressbar + "█"
+	}
+	log ("╔══════════╗")
+	log ("║"+progressbar+progressbar_empty+"║")
+	log ("╚══════════╝")
+	log (procent + "% ")
+}
 
 var scanner = {
 	//путь к папке Songs (обратный слеш в пути экранируется еще одним - \\ )
@@ -119,14 +135,16 @@ var scanner = {
 	  	var rd 
 	  	var itemnum = 0
 	  	var itemnumproc = 0
+	  	progressbar = ""
+	  	progressbar_empty = progressbar_empty_defaut
 
  		for (const file of SongsDir){
 
 			if (itemnum % (SongsDir.length/1000) < 1 ){
  				process.stdout.write('\033c')
- 				itemnumproc = Math.trunc(itemnum / SongsDir.length * 1000) / 100
+ 				itemnumproc = Math.trunc(itemnum / SongsDir.length * 1000) / 10
  				log ("Processing...")
-		 		log ( itemnumproc + "%" )
+		 		PrintProcents(itemnumproc)
 			}
 	   	 
 	   		itemnum++
@@ -445,6 +463,7 @@ var scanner = {
 		   				if (this.debug == 0){
 			   				await fs.rmdir(filePathTemp, { recursive: true })
 			   			}
+			   			await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
 		   			}
 
 		   			if (this.deleteFilesNotInBeatmap == 1){
@@ -539,6 +558,10 @@ var scanner = {
 			var el_num = 0
 			var el_num_proc = 0
 			var BeatmapsDB_length = this.BeatmapsDB.length
+
+			progressbar = ""
+	  		progressbar_empty = progressbar_empty_defaut
+
 			this.BeatmapsDB.filter(function(el){
 				var i = beatmapsDB_sorting.findIndex(x=>(x.BeatmapID === el.BeatmapID && x.tempdata_beatmapsetid === el.tempdata_beatmapsetid))
 				if(i <= -1){
@@ -547,10 +570,10 @@ var scanner = {
 					beatmapsDB_dublicates.push(el)
 				}
 				if (el_num % (BeatmapsDB_length/1000) < 1 ){
- 				process.stdout.write('\033c')
- 				el_num_proc = Math.trunc(el_num / BeatmapsDB_length * 1000) / 100
+ 					process.stdout.write('\033c')
+ 					el_num_proc = Math.trunc(el_num / BeatmapsDB_length * 1000) / 10
  					log ("Finding dublicates...")
-	   	 		log ( el_num_proc + "%" )
+	   	 		PrintProcents(el_num_proc)
 	   	 	}
 				el_num++
 
