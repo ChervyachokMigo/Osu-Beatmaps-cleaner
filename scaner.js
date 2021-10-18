@@ -117,6 +117,9 @@ var scanner = {
 
 					if (!fileinbeatmapstatus.isDirectory()) {
 						await fs.appendFile('files_not_in_beatmaps.txt', fullpathinnotbeatmap+"\n");
+						/*if (fullpathinnotbeatmap.indexOf('.wav') >= 0 && fullpathinnotbeatmap.indexOf('.ogg') >= 0 && fullpathinnotbeatmap.indexOf('.mp3') >= 0){
+							await fs.appendFile('wavs.txt', file3 +"\n");
+						}*/
 						if (this.debug == 0){
 							await fs.unlink(fullpathinnotbeatmap)
 						}
@@ -334,28 +337,28 @@ var scanner = {
 															tempdata[i].startsWith("4,") === true  ||
 															tempdata[i].startsWith("5,") === true  ||
 															tempdata[i].startsWith("6,") === true ){
-				   											var tempdata_sprite = tempdata[i].split(",")
-				   											tempdata_sprite = tempdata_sprite[3].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
-														   	tempSprites.push(tempdata_sprite)
+					   											var tempdata_sprite = tempdata[i].split(",")
+					   											tempdata_sprite = tempdata_sprite[3].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
+																tempSprites.push(tempdata_sprite)
 															}
+															
 														}
 
 														if (this.deletevideos== 1 || this.deleteFilesNotInBeatmap == 1){
 															if (tempdata[i].startsWith("1,") === true ||//video
 															tempdata[i].startsWith("Video,") === true){
-																//await fs.appendFile('events.txt', tempdata[i]);
 																var tempdata_video = tempdata[i].split(",")
-				   											tempdata_video = tempdata_video[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
-														   	tempVideos.push(tempdata_video)
+					   											tempdata_video = tempdata_video[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
+															   	tempVideos.push(tempdata_video)
 															}
 														}
 
 														if (this.checkexsitsbg == 1 || this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
-				   										if(tempdata[i].startsWith("0,") === true //bg
+				   											if(tempdata[i].startsWith("0,") === true //bg
 															){
-				   											var tempdata_bg = tempdata[i].split(",")
-				   											tempdata_bg = tempdata_bg[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
-													      	tempBgs.push(tempdata_bg)
+					   											var tempdata_bg = tempdata[i].split(",")
+					   											tempdata_bg = tempdata_bg[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
+														      	tempBgs.push(tempdata_bg)
 															}
 														}
 
@@ -371,7 +374,7 @@ var scanner = {
 									if (this.deletebeatmapsdublicates == 1){
 										if (path.extname(file2)=='.osu'){
 											if ( tempdata_beatmapid === "0" ||  tempdata_beatmapsetid ==="-1" || tempdata_beatmapsetid ==="-2" ){
-
+												//do nothing
 												
 											}else {
 												var NewBeatmap = {
@@ -382,9 +385,6 @@ var scanner = {
 
 												this.BeatmapsDB.push(NewBeatmap)
 												
-												/*log (tempdata_beatmapid)
-												log(tempdata_beatmapsetid)
-												log(tempdatafilename)*/
 											}
 										}
 				   				}
