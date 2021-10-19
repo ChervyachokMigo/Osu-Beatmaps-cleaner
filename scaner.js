@@ -49,7 +49,10 @@ var scanner = {
 	//поиск дубликатов
 	deletebeatmapsdublicates: 1,
 
+	//не удалять файлы (режим отладки скрипта)
 	debug: 0,
+	//писать в txt файлы, что удалено. Не влияет на checkexsitsbg, checkaudioexists
+	logs: 0,
 
 	BeatmapsDB: [],
 
@@ -59,16 +62,24 @@ var scanner = {
 		    await fs.access(filepath, fs.F_OK)
 		    if (filetype=='sprite'){
 		    	if (this.deletesprites == 1){
-		    		await fs.appendFile('deleted_sprites.txt', filepath+"\n");
+		    		if (this.logs == 1){
+			    		await fs.appendFile('deleted_sprites.txt', filepath+"\n");
+			    	}
 		    		if (this.debug == 0){
-			    		await fs.unlink(filepath)
+		    			//log ("s")
+			    		try{await fs.unlink(filepath)}catch(e){
+			    			//donothing
+			    		}
 			    	}
 		    	}
 		    }
 		    if (filetype=='video'){
 		    	if (this.deletevideos == 1){
-		    		await fs.appendFile('deleted_videos.txt', filepath+"\n");
+		    		if (this.logs == 1){
+		    			await fs.appendFile('deleted_videos.txt', filepath+"\n");
+		    		}
 		    		if (this.debug == 0){
+		    			//log ("v")
 		    			await fs.unlink(filepath)
 		    		}
 		    	}
@@ -78,6 +89,7 @@ var scanner = {
 			  	if (filetype=='bg'){
 			  		if (this.checkexsitsbg == 1){
 			  			if (idmap === "-2" || idmap === "-1"){
+			  				//log ("b")
 				    		await fs.appendFile('bg_not_exists.html', "[no link] "+filepath+"\n</br>");
 				    	} else {
 				    		await fs.appendFile('bg_not_exists.html',"<a href=https://osu.ppy.sh/beatmapsets/"+idmap+"/download>"+filepath+"</a>\n</br>");
@@ -86,6 +98,7 @@ var scanner = {
 				}
 				if (filetype=='audio'){
 			    	if (this.checkaudioexists == 1){
+			    		//log ("a")
 			    		if (idmap === "-2" || idmap === "-1"){
 			    			await fs.appendFile('audio_not_exists.html',"[no link] "+filepath+"\n</br>");
 			    		} else {
@@ -116,7 +129,9 @@ var scanner = {
 					var fileinbeatmapstatus = await fs.lstat(fullpathinnotbeatmap)
 
 					if (!fileinbeatmapstatus.isDirectory()) {
-						await fs.appendFile('files_not_in_beatmaps.txt', fullpathinnotbeatmap+"\n");
+						if (this.logs == 1){
+							await fs.appendFile('files_not_in_beatmaps.txt', fullpathinnotbeatmap+"\n");
+						}
 						if (this.debug == 0){
 							await fs.unlink(fullpathinnotbeatmap)
 						}
@@ -190,14 +205,15 @@ var scanner = {
 		   			var tempBgs = []
 		   			tempBgs.length = 0
 		   			var allFolderFiles = []
-						allFolderFiles.length = 0
-						var otherFiles = []
-						otherFiles.length = 0
-						var audioFiles = []
-						audioFiles.length = 0
-						var bgFiles = []
-						bgFiles.length = 0
+					allFolderFiles.length = 0
+					var otherFiles = []
+					otherFiles.length = 0
+					var audioFiles = []
+					audioFiles.length = 0
+					var bgFiles = []
+					bgFiles.length = 0
 		   			//log ('processing '+file)
+		   			
 
 		   			for (const file2 of DirTemp){
 		   				if (file2 !== undefined && file2 !== null && file2 !== '' && file2 !== '.' && file2 !== '..' ){
@@ -215,16 +231,20 @@ var scanner = {
 			   						var tempdata_beatmapid = "0"
 			   						var tempdata_beatmapsetid = "-2"
 			   						var fullpathaudio = ""
+			   						var tempdata_audio = ""
+			   						var tempdatafilename = ""
+			   						var tempdata_mode = ""
 
 			   						for(i in tempdata) {
 			   								
 		   								if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1 || this.deletebeatmapsdublicates == 1){
 
 		   									if(tempdata[i].startsWith("AudioFilename:") ){
-													var tempdata_audio = tempdata[i].split(":")
-													fullpathaudio = (filePathTemp+"\\"+tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+													tempdata_audio = tempdata[i].split(":")
+													tempdata_audio = (tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+													fullpathaudio = filePathTemp+"\\"+tempdata_audio
 													if (this.deleteFilesNotInBeatmap == 1){
-														otherFiles.push((tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase())
+														otherFiles.push(tempdata_audio)
 													}
 												}
 			   								if(tempdata[i].startsWith("BeatmapID:") ){
@@ -237,33 +257,21 @@ var scanner = {
 		   										tempdata_beatmapsetid =  tempdata_beatmapsetid[1].trim()
 		   									}
 
-		   									var tempdatafilename = (file+"\\"+file2).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+		   									tempdatafilename = (file+"\\"+file2).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
 		   								}
 
 		   								if (this.deletectb == 1 || this.deletemania == 1 ||this.deletetaiko == 1 ||this.deletestd == 1 ){
 		   									if(tempdata[i].startsWith("Mode:") === true){
-		   										var tempdata_mode = tempdata[i].split(":")
+		   										tempdata_mode = tempdata[i].split(":")
 		   										tempdata_mode = tempdata_mode[1].trim()
-		   										if (tempdata_mode == "0" && this.deletestd == 1){
-		   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
-		   											if (this.debug == 0){
-		   												await fs.unlink(filePathTemp+"\\"+file2)
+		   										if ((tempdata_mode == "0" && this.deletestd == 1) || 
+		   											(tempdata_mode == "1" && this.deletetaiko == 1) ||
+		   											(tempdata_mode == "2" && this.deletectb == 1) ||
+		   											(tempdata_mode == "3" && this.deletemania == 1)){
+
+		   											if (this.logs == 1){
+		   												await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
 		   											}
-		   										}
-		   										if (tempdata_mode == "1" && this.deletetaiko == 1){
-		   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
-		   											if (this.debug == 0){
-		   												await fs.unlink(filePathTemp+"\\"+file2)
-		   											}
-		   										}
-		   										if (tempdata_mode == "2" && this.deletectb == 1){
-		   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
-		   											if (this.debug == 0){
-		   												await fs.unlink(filePathTemp+"\\"+file2)
-		   											}
-		   										}
-		   										if (tempdata_mode == "3" && this.deletemania == 1){
-		   											await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+file2+"\n");
 		   											if (this.debug == 0){
 		   												await fs.unlink(filePathTemp+"\\"+file2)
 		   											}
@@ -272,6 +280,9 @@ var scanner = {
 		   								}
 
 		   								if (this.deletesprites== 1 || this.deletevideos == 1 || this.checkexsitsbg == 1){
+		   									var tempdata_sprite = ""
+		   									var tempdata_video = ""
+		   									var tempdata_bg = ""
 			   								if (tempdata[i].startsWith("[Events]") === true){
 			   									eventscheck = 1
 			   								}
@@ -325,8 +336,6 @@ var scanner = {
 			   										//ничего не делать
 			   									} else {
 
-			   										//await fs.appendFile('events.txt', tempdata[i]);
-
 			   										if (this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
 				   										if (tempdata[i].startsWith("Animation,") === true || 
 					   									tempdata[i].startsWith("Sprite,") === true || 
@@ -334,28 +343,28 @@ var scanner = {
 															tempdata[i].startsWith("4,") === true  ||
 															tempdata[i].startsWith("5,") === true  ||
 															tempdata[i].startsWith("6,") === true ){
-				   											var tempdata_sprite = tempdata[i].split(",")
-				   											tempdata_sprite = tempdata_sprite[3].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
-														   	tempSprites.push(tempdata_sprite)
+					   											tempdata_sprite = tempdata[i].split(",")
+					   											tempdata_sprite = tempdata_sprite[3].replace(/"/g, "").trim().replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+																tempSprites.push(tempdata_sprite)
 															}
+															
 														}
 
 														if (this.deletevideos== 1 || this.deleteFilesNotInBeatmap == 1){
 															if (tempdata[i].startsWith("1,") === true ||//video
 															tempdata[i].startsWith("Video,") === true){
-																//await fs.appendFile('events.txt', tempdata[i]);
-																var tempdata_video = tempdata[i].split(",")
-				   											tempdata_video = tempdata_video[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
-														   	tempVideos.push(tempdata_video)
+																tempdata_video = tempdata[i].split(",")
+					   											tempdata_video = tempdata_video[2].replace(/"/g, "").trim().replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+															   	tempVideos.push(tempdata_video)
 															}
 														}
 
 														if (this.checkexsitsbg == 1 || this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
-				   										if(tempdata[i].startsWith("0,") === true //bg
+				   											if(tempdata[i].startsWith("0,") === true //bg
 															){
-				   											var tempdata_bg = tempdata[i].split(",")
-				   											tempdata_bg = tempdata_bg[2].replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').trim().toLowerCase()
-													      	tempBgs.push(tempdata_bg)
+					   											tempdata_bg = tempdata[i].split(",")
+					   											tempdata_bg = tempdata_bg[2].replace(/"/g, "").trim().replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+														      	tempBgs.push(tempdata_bg)
 															}
 														}
 
@@ -371,7 +380,7 @@ var scanner = {
 									if (this.deletebeatmapsdublicates == 1){
 										if (path.extname(file2)=='.osu'){
 											if ( tempdata_beatmapid === "0" ||  tempdata_beatmapsetid ==="-1" || tempdata_beatmapsetid ==="-2" ){
-
+												//do nothing
 												
 											}else {
 												var NewBeatmap = {
@@ -382,9 +391,6 @@ var scanner = {
 
 												this.BeatmapsDB.push(NewBeatmap)
 												
-												/*log (tempdata_beatmapid)
-												log(tempdata_beatmapsetid)
-												log(tempdatafilename)*/
 											}
 										}
 				   				}
@@ -447,7 +453,7 @@ var scanner = {
 							tempSprites = tempSprites.filter (function(elem){
 								var spriteisbg = false
 								for (var tempbgcurrent of bgFiles){
-									if (tempbgcurrent.bg_i===elem){
+									if (tempbgcurrent.bg_i===elem || tempdata_audio===elem){
 										spriteisbg = true
 										break
 									}
@@ -456,7 +462,7 @@ var scanner = {
 							})
 							for (var tempsprite of tempSprites){
 								var fullpathprite = (filePathTemp+"\\"+tempsprite).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-					      	scanner.checkFileExists(fullpathprite,'sprite',"-2")
+					      		scanner.checkFileExists(fullpathprite,'sprite',"-2")
 							    
 							}
 						}
@@ -482,13 +488,6 @@ var scanner = {
 							}
 						}
 
-		   			if (this.deleteEmptyDir == 1 && findEmpty==0){
-		   				if (this.debug == 0){
-			   				await fs.rmdir(filePathTemp, { recursive: true })
-			   			}
-			   			await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
-		   			}
-
 		   			if (this.deleteFilesNotInBeatmap == 1){
 		   				tempBgs.length = 0
 		   				for (var tempbg of bgFiles){
@@ -496,8 +495,16 @@ var scanner = {
 		   				}
 							allFolderFiles = tempSprites.concat(tempBgs).concat(tempVideos).concat(otherFiles)
 							await this.checkInNotBeatmapFilesRecursive(filePathTemp,"",allFolderFiles)
-						}
+					}
 
+					if (this.deleteEmptyDir == 1 && findEmpty==0){
+		   				if (this.debug == 0){
+			   				await fs.rmdir(filePathTemp, { recursive: true })
+			   			}
+			   			if (this.logs == 1){
+			   				await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
+			   			}
+		   			}
 
 		   		}
 			} 
@@ -545,7 +552,9 @@ var scanner = {
 				if (this.debug==0){
 					await fs.unlink(this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
 				}
-				await fs.appendFile('deleted_dublicated_files.txt', this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
+				if (this.logs == 1){
+					await fs.appendFile('deleted_dublicated_files.txt', this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
+				}
 			}
 			log ("All Dublicated Deleted.")
 
