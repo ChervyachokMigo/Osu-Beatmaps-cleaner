@@ -30,3 +30,12 @@
 	deletemania: 1,
 	//удалить карты catch the beat
 	deletectb: 1,
+	//поиск дубликатов
+	deletebeatmapsdublicates: 1,
+
+	//не удалять файлы (режим отладки скрипта)
+	debug: 0,
+	//писать в txt файлы, что удалено. Не влияет на checkexsitsbg, checkaudioexists
+	logs: 0,
+
+Есть проблемы с одновременным включением deletesprites и deleteFilesNotInBeatmap. рекомендуется их включать отдельно.
