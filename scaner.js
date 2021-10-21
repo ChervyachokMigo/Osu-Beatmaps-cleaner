@@ -29,30 +29,32 @@ var scanner = {
 	//1 = да, 0 = нет
 	///////////////////
 	//Удаляет пустые папки без найденных osu файлов
-	deleteEmptyDir: 0,
+	deleteEmptyDir: 1,
 	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 0,
+	deletesprites: 1,
 	//удаляет видео карт
-	deletevideos: 0,
+	deletevideos: 1,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 0,
+	deleteFilesNotInBeatmap: 1,
 	//поиск дубликатов
-	deletebeatmapsdublicates: 0,
+	deletebeatmapsdublicates: 1,
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
-	deletetaiko: 0,
+	deletetaiko: 1,
 	//удалить карты мании
-	deletemania: 0,
+	deletemania: 1,
 	//удалить карты catch the beat
-	deletectb: 0,
+	deletectb: 1,
 
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
-	checkexsitsbg: 1,
-	//проверка отсутствующих аудио файлов, результаты будут в txt файле
-	checkaudioexists: 0,
+	checkexsitsbg: 0,
 	//заменять отсутствующие бг рандомными
 	replaceEmptyBG: 1,
+
+	//проверка отсутствующих аудио файлов, результаты будут в txt файле
+	checkaudioexists: 0,
+	
 
 	//не удалять файлы (режим отладки скрипта)
 	debug: 0,
@@ -268,6 +270,7 @@ var scanner = {
 		   						var tempdata_audio = ""
 		   						var tempdatafilename = ""
 		   						var tempdata_mode = ""
+		   						var tempdata_diff = ""
 
 		   						if (this.deleteEmptyDir == 1){
 		   							if (path.extname(checkingfile)=='.osu'){
@@ -282,7 +285,7 @@ var scanner = {
 	   									if(tempdata[i].startsWith("AudioFilename:") ){
 												tempdata_audio = tempdata[i].split(":")
 												tempdata_audio = (tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-												fullpathaudio = filePathTemp+"\\"+tempdata_audio
+												fullpathaudio = (filePathTemp+"\\"+tempdata_audio).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
 												otherFiles.push(tempdata_audio)
 											}
 		   								if(tempdata[i].startsWith("BeatmapID:") ){
@@ -294,7 +297,10 @@ var scanner = {
 	   										tempdata_beatmapsetid = tempdata[i].split(":")
 	   										tempdata_beatmapsetid =  tempdata_beatmapsetid[1].trim()
 	   									}
-
+	   									if(tempdata[i].startsWith("Version:") ){
+	   										tempdata_diff = tempdata[i].split(":")
+	   										tempdata_diff =  tempdata_diff[1].trim()
+	   									}
 	   									tempdatafilename = (folder+"\\"+checkingfile).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
 	   								}
 
@@ -424,7 +430,8 @@ var scanner = {
 											var NewBeatmap = {
 												"BeatmapID":tempdata_beatmapid,
 												"BeatmapSetID":tempdata_beatmapsetid,
-												"BeatmapFilename":tempdatafilename
+												"BeatmapFilename":tempdatafilename,
+												"BeatmapDifficulty":tempdata_diff
 											}
 
 											this.BeatmapsDB.push(NewBeatmap)
@@ -441,7 +448,7 @@ var scanner = {
 
 				   				if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1 || this.deletesprites == 1){
 									if (fullpathaudio !== ""){
-										audioFiles.push({fullpathaudio, tempdata_beatmapsetid})
+										audioFiles.push({fullpathaudio, tempdata_beatmapsetid, tempdata_audio})
 									}
 								}
 
@@ -457,7 +464,7 @@ var scanner = {
 						})
 					}
 					
-					if (this.deletevideos== 1){
+					if (this.deletevideos== 1 || this.deleteFilesNotInBeatmap == 1 ){
 						tempVideos = tempVideos.filter(function(elem, pos) {
 						    return tempVideos.indexOf(elem) == pos;
 						})
@@ -475,7 +482,7 @@ var scanner = {
 						bgFiles = bgFiles2
 					}
 
-					if (this.checkaudioexists == 1){
+					if (this.checkaudioexists == 1 || this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1 ){
 						var audioFiles2 = []
 						audioFiles.filter(function(el){
 							var i = audioFiles2.findIndex(x=>(x.fullpathaudio === el.fullpathaudio))
@@ -491,12 +498,22 @@ var scanner = {
 						tempSprites = tempSprites.filter (function(elem){
 							var spriteisbg = false
 							for (var tempbgcurrent of bgFiles){
-								if (tempbgcurrent.bg_i===elem || tempdata_audio===elem){
+								if (tempbgcurrent.bg_i===elem){
 									spriteisbg = true
 									break
 								}
 							}
 							return !spriteisbg
+						})
+						tempSprites = tempSprites.filter (function(elem){
+							var spriteisaudio = false
+							for (var tempaudiocurrent of audioFiles){
+								if (tempaudiocurrent.tempdata_audio===elem){
+									spriteisaudio = true
+									break
+								}
+							}
+							return !spriteisaudio
 						})
 						for (var tempsprite of tempSprites){
 							var fullpathprite = (filePathTemp+"\\"+tempsprite).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
@@ -569,7 +586,8 @@ var scanner = {
 			ProgressBarDefault()
 
 			this.BeatmapsDB.filter(function(el){
-				var i = beatmapsDB_sorting.findIndex(x=>(x.BeatmapID === el.BeatmapID && x.tempdata_beatmapsetid === el.tempdata_beatmapsetid))
+				var i = beatmapsDB_sorting.findIndex(x=>(x.BeatmapID === el.BeatmapID && 
+					x.tempdata_beatmapsetid === el.tempdata_beatmapsetid && x.BeatmapDifficulty === el.BeatmapDifficulty))
 				if(i <= -1){
 			      beatmapsDB_sorting.push(el);
 				} else {
@@ -607,6 +625,7 @@ var scanner = {
 
 		}	//end if deletebeatmapdublicates
 
+		//замена фонов рандомными
 		if (this.checkexsitsbg == 1){
 			if (this.replaceEmptyBG == 1){
 				var el_num = 0
