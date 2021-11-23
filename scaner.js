@@ -6,7 +6,7 @@ var progressbar, progressbar_empty
 
 function ProgressBarDefault(){
 	progressbar = ""
-	progressbar_empty = "▄▄▄▄▄▄▄▄▄▄"
+	progressbar_empty = "__________"
 }
 
 function PrintProcents(procent){
@@ -21,6 +21,68 @@ function PrintProcents(procent){
 	log (procent + "% ")
 }
 
+function PrintProgress(Length,num,task){
+	if (num % (Length/1000) < 1 ){
+		process.stdout.write('\033c');
+		let itemnumproc = Math.trunc(num / Length * 1000) / 10
+		log ("[Tasks]")
+		if (task==1){
+			if (scanner.deletesprites == 1){
+				log ("Delete storyboards")
+			}
+			if (scanner.deletevideos == 1){
+				log ("Delete videos")
+			}
+			if (scanner.deleteFilesNotInBeatmap == 1){
+				log ("Delete skins, hitsounds")
+			}
+			if (scanner.deletestd == 1){
+				log ("Delete osu!standart maps")
+			}
+			if (scanner.deletetaiko == 1){
+				log ("Delete osu!taiko maps")
+			}
+			if (scanner.deletemania == 1){
+				log ("Delete osu!mania maps")
+			}
+			if (scanner.deletectb == 1){
+				log ("Delete osu!catch the beat maps")
+			}
+
+			if (scanner.deleteshortmaps == 1){
+				log ("Delete short maps with < "+scanner.MinHitObjects+" hit objects")
+			}
+
+			if (scanner.checkexsitsbg == 1){
+				log ("Checking bg exists")
+				if (scanner.replaceEmptyBG == 1){
+					log (" * Finding empty BGs")
+				}
+			}
+			if (scanner.checkaudioexists == 1){
+				log ("Checking audio exists")
+			}
+		}
+		if (task==2){
+			log ("Delete dublicates")
+		}
+		if (task==3){
+			log ("Checking bg exists")
+			log (" * Replacing BGs... ("+ Length +")")
+		}
+		if (task==4){
+			if (scanner.deleteEmptyDir == 1){
+				log ("Delete empty dirs")
+			}
+		}
+		log ("")
+		log ("Processing...")
+		PrintProcents(itemnumproc)
+	}
+}
+
+
+
 var scanner = {
 	//путь к папке Songs (обратный слеш в пути экранируется еще одним - \\ )
 	Songspath: 'H:\\Songs',
@@ -31,11 +93,11 @@ var scanner = {
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
 	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 0,
+	deletesprites: 1,
 	//удаляет видео карт
 	deletevideos: 1,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 0,
+	deleteFilesNotInBeatmap: 1,
 	//поиск дубликатов
 	deletebeatmapsdublicates: 0,
 	//удалить все карты стандартной осу
@@ -51,12 +113,12 @@ var scanner = {
 	MinHitObjects: 30,//минимальное количество обьектов в карте
 
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
-	checkexsitsbg: 0,
+	checkexsitsbg: 1,
 	//заменять отсутствующие бг рандомными
 	replaceEmptyBG: 0,
 
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
-	checkaudioexists: 0,
+	checkaudioexists: 1,
 	
 
 	//не удалять файлы (режим отладки скрипта)
@@ -167,6 +229,60 @@ var scanner = {
 		}
 	},
 
+	checkForEmptyDirs: async function(){
+		if (this.deleteEmptyDir == 1){
+			let SongsDir
+			try{
+			  	SongsDir = await fs.readdir(this.Songspath);
+			}catch(errorSongsPath){
+				if (errorSongsPath.code === 'ENOENT'){
+					log ("Incorrect path to Songs")
+				}
+				return
+			}
+
+			let itemnum = 0
+		  	ProgressBarDefault()
+
+		  	for (let folder of SongsDir){
+
+				PrintProgress(SongsDir.length,itemnum,4)
+				itemnum++
+
+	 			if (folder !== undefined && folder !== null && folder !== '' && folder !== '.' && folder !== '..' ){
+		  			let filePathTemp = (this.Songspath+'\\'+folder).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
+			   	 	let fileTemp = await fs.lstat(filePathTemp)
+
+			   		if (fileTemp.isDirectory()){
+
+			   			let DirTemp = await fs.readdir(filePathTemp)
+			   			let findEmpty = 1
+			   			for (const checkingfile of DirTemp){
+			   				if (checkingfile !== undefined && checkingfile !== null && checkingfile !== '' && checkingfile !== '.' && checkingfile !== '..' ){
+			   					if (path.extname(checkingfile)=='.osu'){
+			   						findEmpty=0
+			   					}
+
+
+
+			   			}}//every file in folder
+
+			   			if (this.deleteEmptyDir == 1 && findEmpty==1){
+			   				if (this.debug == 0){
+				   				await fs.rmdir(filePathTemp, { recursive: true })
+				   			}
+				   			if (this.logs == 1){
+				   				await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
+				   			}
+			   			}
+
+
+
+			   		}}}//every folder
+
+		}
+	},
+
 	run: async function(){
 		var SongsDir
 		try{
@@ -177,9 +293,7 @@ var scanner = {
 			}
 			return
 		}
-	  	var rd 
 	  	var itemnum = 0
-	  	var itemnumproc = 0
 	  	ProgressBarDefault()
 
 		var bgExists = []
@@ -187,54 +301,8 @@ var scanner = {
 
  		for (const folder of SongsDir){
 
-			if (itemnum % (SongsDir.length/1000) < 1 ){
- 				process.stdout.write('\033c')
- 				itemnumproc = Math.trunc(itemnum / SongsDir.length * 1000) / 10
- 				log ("[Tasks]")
- 				if (this.deletesprites == 1){
- 					log ("Delete storyboards")
- 				}
- 				if (this.deletevideos == 1){
- 					log ("Delete videos")
- 				}
- 				if (this.deleteFilesNotInBeatmap == 1){
- 					log ("Delete skins, hitsounds")
- 				}
- 				if (this.deletestd == 1){
- 					log ("Delete osu!standart maps")
- 				}
- 				if (this.deletetaiko == 1){
- 					log ("Delete osu!taiko maps")
- 				}
- 				if (this.deletemania == 1){
- 					log ("Delete osu!mania maps")
- 				}
- 				if (this.deletectb == 1){
- 					log ("Delete osu!catch the beat maps")
- 				}
-
- 				if (this.deleteshortmaps == 1){
- 					log ("Delete short maps with < "+this.MinHitObjects+" hit objects")
- 				}
-
- 				if (this.deleteEmptyDir == 1){
- 					log ("Delete empty dirs")
- 				}
- 				if (this.checkexsitsbg == 1){
- 					log ("Checking bg exists")
- 					if (this.replaceEmptyBG == 1){
- 						log (" * Finding empty BGs")
- 					}
- 				}
- 				if (this.checkaudioexists == 1){
- 					log ("Checking audio exists")
- 				}
- 				log ("")
- 				log ("Processing...")
-		 		PrintProcents(itemnumproc)
-			}
-	   	 
-	   		itemnum++
+ 			PrintProgress(SongsDir.length,itemnum,1)
+			itemnum++
 
 	  		if (folder !== undefined && folder !== null && folder !== '' && folder !== '.' && folder !== '..' ){
 	  			var filePathTemp = (this.Songspath+'\\'+folder).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
@@ -243,7 +311,6 @@ var scanner = {
 		   		if (fileTemp.isDirectory()){
 
 		   			const DirTemp = await fs.readdir(filePathTemp)
-		   			var findEmpty = 1
 
 		   			var tempSprites = []
 		   			tempSprites.length = 0
@@ -283,11 +350,6 @@ var scanner = {
 		   						var tempdata_diff = ""
 		   						var HitObjectsFind = 0
 		   						var HitObjects = 0
-		   						if (this.deleteEmptyDir == 1){
-		   							if (path.extname(checkingfile)=='.osu'){
-			   							findEmpty=0
-			   						}
-		   						}
 
 		   						for(i in tempdata) {
 		   								
@@ -609,7 +671,7 @@ var scanner = {
 			   				}
 			   				
 			   			}
-			   				if (this.debug==0){
+			   			if (this.debug==0){
 							for (var tempshortmap of deleteShortMapsFiles){
 								try{
 					   				await fs.unlink(this.Songspath+"\\"+tempshortmap.ShortMapPath)
@@ -617,20 +679,8 @@ var scanner = {
 									await fs.appendFile('deleted_shortmaps.txt', e+"\n");
 								}
 			   				}
-							
 						}
 					}
-
-					if (this.deleteEmptyDir == 1 && findEmpty==1){
-		   				if (this.debug == 0){
-			   				await fs.rmdir(filePathTemp, { recursive: true })
-			   			}
-			   			if (this.logs == 1){
-			   				await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
-			   			}
-		   			}
-
-
 
 		   		}
 			} 
@@ -641,10 +691,9 @@ var scanner = {
 		if (this.deletebeatmapsdublicates == 1){			
 			var beatmapsDB_sorting = []
 			var beatmapsDB_dublicates = []
-			var el_num = 0
-			var el_num_proc = 0
 			var BeatmapsDB_length = this.BeatmapsDB.length
 
+			var el_num = 0
 			ProgressBarDefault()
 
 			this.BeatmapsDB.filter(function(el){
@@ -656,15 +705,7 @@ var scanner = {
 					beatmapsDB_dublicates.push(el)
 				}
 
-				if (el_num % (BeatmapsDB_length/1000) < 1 ){
-					process.stdout.write('\033c')
-					log ("[Tasks]")
-					log ("Delete dublicates")
-					log (" ")
-					el_num_proc = Math.trunc(el_num / BeatmapsDB_length * 1000) / 10
-					log ("Finding dublicates...")
-		   	 		PrintProcents(el_num_proc)
-		   	 	}
+				PrintProgress(BeatmapsDB_length,el_num ,2)
 				el_num++
 
 				return null;
@@ -695,9 +736,10 @@ var scanner = {
 		//замена фонов рандомными
 		if (this.checkexsitsbg == 1){
 			if (this.replaceEmptyBG == 1){
+
 				var el_num = 0
-				var el_num_proc = 0
 				ProgressBarDefault()
+
 				for (var bge of bgEmpty){
 					var bgCopy_IndexRandom = Math.floor(Math.random() * bgExists.length)
 					try{
@@ -711,19 +753,14 @@ var scanner = {
 							}
 						}
 					}
-					if (el_num % (bgEmpty.length/1000) < 1 ){
-						process.stdout.write('\033c')
-						log ("[Tasks]")
-						log ("Checking bg exists")
-						log (" * Replacing BGs... ("+ bgEmpty.length +")")
-						log (" ")
-						el_num_proc = Math.trunc(el_num / bgEmpty.length * 1000) / 10
-			   	 		PrintProcents(el_num_proc)
-			   	 	}
+
+					PrintProgress(bgEmpty.length,el_num,3)
 					el_num++
 				}
 			}
 		}	//end checkexsitsbg replaceEmptyBG
+
+		await this.checkForEmptyDirs();
 
 	//end function run
 	}
