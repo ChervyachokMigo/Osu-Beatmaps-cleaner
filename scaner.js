@@ -31,13 +31,13 @@ var scanner = {
 	//Удаляет пустые папки без найденных osu файлов
 	deleteEmptyDir: 1,
 	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 1,
+	deletesprites: 0,
 	//удаляет видео карт
 	deletevideos: 1,
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 1,
+	deleteFilesNotInBeatmap: 0,
 	//поиск дубликатов
-	deletebeatmapsdublicates: 1,
+	deletebeatmapsdublicates: 0,
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
@@ -46,11 +46,14 @@ var scanner = {
 	deletemania: 1,
 	//удалить карты catch the beat
 	deletectb: 1,
+	//удалить короткие карты
+	deleteshortmaps: 1,
+	MinHitObjects: 30,//минимальное количество обьектов в карте
 
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
 	checkexsitsbg: 0,
 	//заменять отсутствующие бг рандомными
-	replaceEmptyBG: 1,
+	replaceEmptyBG: 0,
 
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
 	checkaudioexists: 0,
@@ -59,7 +62,7 @@ var scanner = {
 	//не удалять файлы (режим отладки скрипта)
 	debug: 0,
 	//писать в txt файлы, что удалено. Не влияет на checkexsitsbg, checkaudioexists
-	logs: 0,
+	logs: 1,
 	//заменить ссылки на bloodcat
 	bloodcat: 1,
 
@@ -209,6 +212,11 @@ var scanner = {
  				if (this.deletectb == 1){
  					log ("Delete osu!catch the beat maps")
  				}
+
+ 				if (this.deleteshortmaps == 1){
+ 					log ("Delete short maps with < "+this.MinHitObjects+" hit objects")
+ 				}
+
  				if (this.deleteEmptyDir == 1){
  					log ("Delete empty dirs")
  				}
@@ -251,6 +259,8 @@ var scanner = {
 					audioFiles.length = 0
 					var bgFiles = []
 					bgFiles.length = 0			
+					var deleteShortMapsFiles = []
+					deleteShortMapsFiles.length = 0
 
 		   			for (const checkingfile of DirTemp){
 		   				if (checkingfile !== undefined && checkingfile !== null && checkingfile !== '' && checkingfile !== '.' && checkingfile !== '..' ){
@@ -271,7 +281,8 @@ var scanner = {
 		   						var tempdatafilename = ""
 		   						var tempdata_mode = ""
 		   						var tempdata_diff = ""
-
+		   						var HitObjectsFind = 0
+		   						var HitObjects = 0
 		   						if (this.deleteEmptyDir == 1){
 		   							if (path.extname(checkingfile)=='.osu'){
 			   							findEmpty=0
@@ -317,7 +328,11 @@ var scanner = {
 	   												await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+checkingfile+"\n");
 	   											}
 	   											if (this.debug == 0){
-	   												await fs.unlink(filePathTemp+"\\"+checkingfile)
+	   												try{
+		   												await fs.unlink(filePathTemp+"\\"+checkingfile)
+		   											} catch (e){
+		   												await fs.appendFile('deleted_beatmaps.txt', e+"\n");
+		   											}
 	   											}
 	   										}
 	   									}
@@ -419,6 +434,23 @@ var scanner = {
 
 									} 
 
+									if (this.deleteshortmaps == 1){
+											
+										if (tempdata[i].startsWith("[")== true ){
+											HitObjectsFind = 0
+										}
+
+										if (tempdata[i].toLowerCase().startsWith("[hitobjects]") == true ){
+											HitObjectsFind = 1
+
+										}
+										if (HitObjectsFind == 1){
+											HitObjects++
+										}
+
+										
+
+									}
 								}	//end for
 
 								if (this.deletebeatmapsdublicates == 1){
@@ -449,6 +481,14 @@ var scanner = {
 				   				if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1 || this.deletesprites == 1){
 									if (fullpathaudio !== ""){
 										audioFiles.push({fullpathaudio, tempdata_beatmapsetid, tempdata_audio})
+									}
+								}
+
+								if (this.deleteshortmaps == 1 && HitObjects<this.MinHitObjects){
+									if (path.extname(checkingfile)=='.osu'){
+										let filepathdeleteshortmap=folder+"\\"+checkingfile
+										let objdeleteshortmap = {HitObjects: HitObjects, ShortMapPath: filepathdeleteshortmap}
+										deleteShortMapsFiles.push(objdeleteshortmap)
 									}
 								}
 
@@ -561,6 +601,26 @@ var scanner = {
 						await this.checkInNotBeatmapFilesRecursive(filePathTemp,"",allFolderFiles)
 					}
 
+					if (this.deleteshortmaps == 1){
+
+						if (this.logs == 1){
+							for (var tempshortmap of deleteShortMapsFiles){
+				   				await fs.appendFile('deleted_shortmaps.txt', tempshortmap.HitObjects+" "+tempshortmap.ShortMapPath+"\n");
+			   				}
+			   				
+			   			}
+			   				if (this.debug==0){
+							for (var tempshortmap of deleteShortMapsFiles){
+								try{
+					   				await fs.unlink(this.Songspath+"\\"+tempshortmap.ShortMapPath)
+					   			} catch (e){
+									await fs.appendFile('deleted_shortmaps.txt', e+"\n");
+								}
+			   				}
+							
+						}
+					}
+
 					if (this.deleteEmptyDir == 1 && findEmpty==1){
 		   				if (this.debug == 0){
 			   				await fs.rmdir(filePathTemp, { recursive: true })
@@ -569,6 +629,8 @@ var scanner = {
 			   				await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
 			   			}
 		   			}
+
+
 
 		   		}
 			} 
@@ -614,11 +676,16 @@ var scanner = {
 			//fs.writeFile('beatmapsDB_dublicates.json',JSON.stringify(beatmapsDB_dublicates));
 
 			for (var dublicated_beatmap of beatmapsDB_dublicates){
-				if (this.debug==0){
-					await fs.unlink(this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
-				}
+
 				if (this.logs == 1){
 					await fs.appendFile('deleted_dublicated_files.txt', this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
+				}
+				if (this.debug==0){
+					try{
+						await fs.unlink(this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
+					} catch (e){
+						await fs.appendFile('deleted_dublicated_files.txt', e+"\n");
+					}
 				}
 			}
 			log ("All Dublicated Deleted.")
