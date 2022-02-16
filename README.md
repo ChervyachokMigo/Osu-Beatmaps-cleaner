@@ -1,9 +1,10 @@
 # Osu-Beatmaps-cleaner
 Очищает мусор в картах в игре osu!
 
-Для запуска скрипта предустановите node.js и модули fs,path:
+Для запуска скрипта установите **node.js** и модули fs, path:
 
 `npm install fs`
+
 `npm install path`
 
 настройки в файле config.js
