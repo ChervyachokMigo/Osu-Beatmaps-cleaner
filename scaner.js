@@ -1,207 +1,168 @@
 var log = console.log.bind(console)
-var fs = require('fs').promises
+var fs = require('fs')
 var path = require('path')
 
-var progressbar, progressbar_empty
+const { mainModule } = require('process')
 
-function ProgressBarDefault(){
-	progressbar = ""
-	progressbar_empty = "__________"
-}
+const config = require('./config.js')
+const progress = require('./progress-bar.js')
+const ExplorerOsu = require("./ExplorerOsu.js")
 
-function PrintProcents(procent){
-
-	if ((procent*10 % 100) < 1){
-		progressbar_empty = progressbar_empty.substring(0, progressbar_empty.length - 1);
-		progressbar = progressbar + "█"
+const existsFile = (file) => {
+	try {
+		fs.accessSync(file, fs.constants.F_OK | fs.constants.R_OK);
+		return true;
+	} catch (e) {
+		return false;
 	}
-	log ("╔══════════╗")
-	log ("║"+progressbar+progressbar_empty+"║")
-	log ("╚══════════╝")
-	log (procent + "% ")
 }
 
-function PrintProgress(Length,num,task){
-	if (num % (Length/1000) < 1 ){
-		process.stdout.write('\033c');
-		let itemnumproc = Math.trunc(num / Length * 1000) / 10
-		log ("[Tasks]")
-		if (task==1){
-			if (scanner.deletesprites == 1){
-				log ("Delete storyboards")
-			}
-			if (scanner.deletevideos == 1){
-				log ("Delete videos")
-			}
-			if (scanner.deleteFilesNotInBeatmap == 1){
-				log ("Delete skins, hitsounds")
-			}
-			if (scanner.deletestd == 1){
-				log ("Delete osu!standart maps")
-			}
-			if (scanner.deletetaiko == 1){
-				log ("Delete osu!taiko maps")
-			}
-			if (scanner.deletemania == 1){
-				log ("Delete osu!mania maps")
-			}
-			if (scanner.deletectb == 1){
-				log ("Delete osu!catch the beat maps")
-			}
+function deleteFile(delfile){
+	try{
+		fs.unlinkSync(delfile)
+	} catch (e) {
+		if (config.debug){
+			log (e)
+		}
+	}
+}
 
-			if (scanner.deleteshortmaps == 1){
-				log ("Delete short maps with < "+scanner.MinHitObjects+" hit objects")
-			}
+function getPropery(data,symbol=':',position=1){
+	var res = data.split(symbol)
+	return res[position].trim()
+}
 
-			if (scanner.checkexsitsbg == 1){
-				log ("Checking bg exists")
-				if (scanner.replaceEmptyBG == 1){
-					log (" * Finding empty BGs")
+function onlyUnique(value, index, self) {
+	return self.indexOf(value) === index;
+}
+
+function uniqueBG(bgs){
+	if (bgs.length==0)
+		return []
+	let res = []
+	for (var i = 0; i<bgs.length;i++){
+		if(res.length>0){
+			for (var k = 0; k<res.length;k++)
+				if (res[k].bg_i.toLowerCase()!==bgs[i].bg_i.toLowerCase()) {
+					res.push(bgs[i])
+					break
 				}
-			}
-			if (scanner.checkaudioexists == 1){
-				log ("Checking audio exists")
-			}
+		} else {
+			res.push(bgs[i])
 		}
-		if (task==2){
-			log ("Delete dublicates")
-		}
-		if (task==3){
-			log ("Checking bg exists")
-			log (" * Replacing BGs... ("+ Length +")")
-		}
-		if (task==4){
-			if (scanner.deleteEmptyDir == 1){
-				log ("Delete empty dirs")
-			}
-		}
-		log ("")
-		log ("Processing...")
-		PrintProcents(itemnumproc)
 	}
+	return res
 }
 
+function error1(vari){
+	log(vari)
+	throw new Error
+}
 
+function spritesWithoutBgAndAudio(spr, bgs, audios){
+	if (spr.length==0)
+		return []
 
-var scanner = {
-	//путь к папке Songs (обратный слеш в пути экранируется еще одним - \\ )
-	Songspath: 'H:\\Songs',
+	if(bgs.length > 0){
+		for (var b=0;b<bgs.length;b++){
+			spr = spr.filter(function(item) {
+				return item !== bgs[b]
+			})
+		}
+	}
 
-	///////////////////
-	//1 = да, 0 = нет
-	///////////////////
-	//Удаляет пустые папки без найденных osu файлов
-	deleteEmptyDir: 1,
-	//удаляет спрайты/сториборды карт и часть хитсаундов
-	deletesprites: 1,
-	//удаляет видео карт
-	deletevideos: 1,
-	//удаляет скины, хитсаунды и файлы не относящиеся к карте
-	deleteFilesNotInBeatmap: 1,
-	//поиск дубликатов
-	deletebeatmapsdublicates: 0,
-	//удалить все карты стандартной осу
-	deletestd: 0,
-	//удалить карты тайко
-	deletetaiko: 1,
-	//удалить карты мании
-	deletemania: 1,
-	//удалить карты catch the beat
-	deletectb: 1,
-	//удалить короткие карты
-	deleteshortmaps: 1,
-	MinHitObjects: 30,//минимальное количество обьектов в карте
+	if(audios.length > 0){
+		for (var a=0;a<audios.length;a++){
+			spr = spr.filter(function(item) {
+				return item !== audios[a].tempdata_audio
+			})
+		}
+	}
+	return spr
+}
 
-	//проверка отсутствующих бекграундов, результаты будут в txt файле
-	checkexsitsbg: 1,
-	//заменять отсутствующие бг рандомными
-	replaceEmptyBG: 0,
+function uniqueAudio(el,id,arr){
+	return el.fullpathaudio === arr[id].fullpathaudio
+}
 
-	//проверка отсутствующих аудио файлов, результаты будут в txt файле
-	checkaudioexists: 1,
-	
+class CleanerOsu extends ExplorerOsu {
 
-	//не удалять файлы (режим отладки скрипта)
-	debug: 0,
-	//писать в txt файлы, что удалено. Не влияет на checkexsitsbg, checkaudioexists
-	logs: 1,
-	//заменить ссылки на bloodcat
-	bloodcat: 1,
+	BeatmapsDB = []
 
-	BeatmapsDB: [],
+	bgExists = []
+	bgEmpty = []
 
-	checkFileExists: async function(filepath,filetype,idmap){
-	  	try
-	  	{
-		    await fs.access(filepath, fs.F_OK)
+	tempSprites = []
+	tempVideos = []
+	tempBgs = []
+	allFolderFiles = []
+	otherFiles = []
+	audioFiles = []
+	bgFiles = []	
+	deleteShortMapsFiles = []
+
+	checkFileExists(filepath,filetype,idmap){
+		if (existsFile(filepath) == true){
 		    if (filetype=='sprite'){
-		    	if (this.deletesprites == 1){
-		    		if (this.logs == 1){
-			    		await fs.appendFile('deleted_sprites.txt', filepath+"\n");
+		    	if (config.deletesprites == 1){
+		    		if (config.logs == 1){
+			    		fs.appendFileSync('deleted_sprites.txt', filepath+"\n");
 			    	}
-		    		if (this.debug == 0){
-		    			//log ("s")
-			    		try{await fs.unlink(filepath)}catch(e){
-			    			//donothing
-			    		}
+		    		if (config.debug == 0){
+			    		fs.unlinkSync(filepath)
 			    	}
 		    	}
 		    }
 		    if (filetype=='video'){
-		    	if (this.deletevideos == 1){
-		    		if (this.logs == 1){
-		    			await fs.appendFile('deleted_videos.txt', filepath+"\n");
+		    	if (config.deletevideos == 1){
+		    		if (config.logs == 1){
+		    			fs.appendFileSync('deleted_videos.txt', filepath+"\n");
 		    		}
-		    		if (this.debug == 0){
-		    			//log ("v")
-		    			await fs.unlink(filepath)
+		    		if (config.debug == 0){
+		    			fs.unlinkSync(filepath)
 		    		}
 		    	}
 		    }
 		    if (filetype=='bg'){
 		    	return true
 		    }
-	  	} catch(error) {
-			if (error.code === 'ENOENT') {
-			  	if (filetype=='bg'){
-			  		if (this.checkexsitsbg == 1){
-			  			if (idmap === "-2" || idmap === "-1"){
-			  				//log ("b")
-				    		await fs.appendFile('bg_not_exists.html', "[no link] "+filepath+"\n</br>");
-				    	} else {
-				    		if (this.bloodcat == 1){
-				    			await fs.appendFile('bg_not_exists.html',"<a href=https://api.chimu.moe/v1/download/"+idmap+"?n=1>"+filepath+"</a>\n</br>")
-				    		}else{
-				    			await fs.appendFile('bg_not_exists.html',"<a href=https://osu.ppy.sh/beatmapsets/"+idmap+"/download>"+filepath+"</a>\n</br>")
-				    		}
-				    	}
-				    	return false
-				    }
+		} else {
+			if (filetype=='bg'){
+				if (config.checkexsitsbg == 1){
+					if (idmap === "-2" || idmap === "-1"){
+						fs.appendFileSync('bg_not_exists.html', "[no link] "+filepath+"\n</br>");
+					} else {
+						if (config.bloodcat == 1){
+							fs.appendFileSync('bg_not_exists.html',"<a href=https://api.chimu.moe/v1/download/"+idmap+"?n=1>"+filepath+"</a>\n</br>")
+						}else{
+							fs.appendFileSync('bg_not_exists.html',"<a href=https://osu.ppy.sh/beatmapsets/"+idmap+"/download>"+filepath+"</a>\n</br>")
+						}
+					}
+					return false
 				}
-				if (filetype=='audio'){
-			    	if (this.checkaudioexists == 1){
-			    		//log ("a")
-			    		if (idmap === "-2" || idmap === "-1"){
-			    			await fs.appendFile('audio_not_exists.html',"[no link] "+filepath+"\n</br>");
-			    		} else {
-			    			if (this.bloodcat == 1){
-				    			await fs.appendFile('audio_not_exists.html',"<a href=https://api.chimu.moe/v1/download/"+idmap+"?n=1>"+filepath+"</a>\n</br>")
-				    		}else{
-				    			await fs.appendFile('audio_not_exists.html',"<a href=https://osu.ppy.sh/beatmapsets/"+idmap+"/download>"+filepath+"</a>\n</br>")
-				    		}
-				    	}
-			    	}
-			    }
-			} else {
-				throw 'unknown error'
+			}
+			if (filetype=='audio'){
+				if (config.checkaudioexists == 1){
+					if (idmap === "-2" || idmap === "-1"){
+						fs.appendFileSync('audio_not_exists.html',"[no link] "+filepath+"\n</br>");
+					} else {
+						if (config.bloodcat == 1){
+							fs.appendFileSync('audio_not_exists.html',"<a href=https://api.chimu.moe/v1/download/"+idmap+"?n=1>"+filepath+"</a>\n</br>")
+						}else{
+							fs.appendFileSync('audio_not_exists.html',"<a href=https://osu.ppy.sh/beatmapsets/"+idmap+"/download>"+filepath+"</a>\n</br>")
+						}
+					}
+				}
 			}
 		}
-	},
+	}
 
-	checkInNotBeatmapFilesRecursive: async function(fullpath,relativepath,allfoldersfilesArray){
+	checkInNotBeatmapFilesRecursive(fullpath,relativepath,allfoldersfilesArray){
 		var fullpath_dir = (fullpath+"\\"+relativepath).toLowerCase()
 		
-		const DirTemp2 = await fs.readdir(fullpath_dir)
+		const DirTemp2 = fs.readdirSync(fullpath_dir, function(err, result) {
+			if(err) console.log('error', err);
+		})
 		for (const file3 of DirTemp2){
 			var fileinbeatmap = 0
 			if (file3 !== undefined && file3 !== null && file3 !== '' && file3 !== '.' && file3 !== '..' ){
@@ -212,50 +173,102 @@ var scanner = {
 				}
 				if (fileinbeatmap == 0){
 					var fullpathinnotbeatmap = (fullpath_dir+'\\'+file3).replace(/\\+/g, '\\').toLowerCase()
-					var fileinbeatmapstatus = await fs.lstat(fullpathinnotbeatmap)
+					var fileinbeatmapstatus = fs.lstatSync(fullpathinnotbeatmap)
 
 					if (!fileinbeatmapstatus.isDirectory()) {
-						if (this.logs == 1){
-							await fs.appendFile('files_not_in_beatmaps.txt', fullpathinnotbeatmap+"\n");
+						if (config.logs == 1){
+							fs.appendFileSync('files_not_in_beatmaps.txt', fullpathinnotbeatmap+"\n");
 						}
-						if (this.debug == 0){
-							await fs.unlink(fullpathinnotbeatmap)
+						if (config.debug == 0){
+							fs.unlinkSync(fullpathinnotbeatmap)
 						}
 					}	else{
-							await this.checkInNotBeatmapFilesRecursive(fullpath,(relativepath+"\\"+file3).replace(/^\/|\/$/g, '').toLowerCase(),allfoldersfilesArray)
+							this.checkInNotBeatmapFilesRecursive(fullpath,(relativepath+"\\"+file3).replace(/^\/|\/$/g, '').toLowerCase(),allfoldersfilesArray)
 					}
 				}
 			}
 		}
-	},
+	}
 
-	checkForEmptyDirs: async function(){
-		if (this.deleteEmptyDir == 1){
-			let SongsDir
-			try{
-			  	SongsDir = await fs.readdir(this.Songspath);
-			}catch(errorSongsPath){
-				if (errorSongsPath.code === 'ENOENT'){
-					log ("Incorrect path to Songs")
-				}
-				return
+	prepareTasks(task){
+		let tasks = []
+		if (task==1){
+			if (config.deletesprites == 1){
+				tasks.push ("Delete storyboards")
 			}
+			if (config.deletevideos == 1){
+				tasks.push ("Delete videos")
+			}
+			if (config.deleteFilesNotInBeatmap == 1){
+				tasks.push ("Delete skins, hitsounds")
+			}
+			if (config.deletestd == 1){
+				tasks.push ("Delete osu!standart maps")
+			}
+			if (config.deletetaiko == 1){
+				tasks.push ("Delete osu!taiko maps")
+			}
+			if (config.deletemania == 1){
+				tasks.push ("Delete osu!mania maps")
+			}
+			if (config.deletectb == 1){
+				tasks.push ("Delete osu!catch the beat maps")
+			}
+			if (config.deleteshortmaps == 1){
+				tasks.push ("Delete short maps with < "+config.MinHitObjects+" hit objects")
+			}
+			if (config.checkexsitsbg == 1){
+				tasks.push ("Checking bg exists")
+				if (config.replaceEmptyBG == 1){
+					tasks.push (" * Finding empty BGs")
+				}
+			}
+			if (config.checkaudioexists == 1){
+				tasks.push ("Checking audio exists")
+			}
+		}
+		if (task==2){
+			tasks.push ("Delete dublicates")
+		}
+		if (task==3){
+			tasks.push ("Checking bg exists")
+			tasks.push (" * Replacing BGs... ("+ Length +")")
+		}
+		if (task==4){
+			if (config.deleteEmptyDir == 1){
+				tasks.push ("Delete empty dirs")
+			}
+		}
+		return tasks
+	}
 
-			let itemnum = 0
-		  	ProgressBarDefault()
+	checkForEmptyDirs(){
+		if (config.deleteEmptyDir == 1){
+
+			let SongsDir = fs.readdirSync(config.Songspath, function(err, result) {
+			if(err) {
+				log ("Incorrect path to Songs")
+				throw new Error('Incorrect path to Songs')
+			}
+			})
+
+
+			progress.setDefault(SongsDir.length,this.prepareTasks(4))
 
 		  	for (let folder of SongsDir){
 
-				PrintProgress(SongsDir.length,itemnum,4)
-				itemnum++
+				progress.print()
+
 
 	 			if (folder !== undefined && folder !== null && folder !== '' && folder !== '.' && folder !== '..' ){
-		  			let filePathTemp = (this.Songspath+'\\'+folder).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
-			   	 	let fileTemp = await fs.lstat(filePathTemp)
+		  			let filePathTemp = (config.Songspath+'\\'+folder).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
+			   	 	let fileTemp = fs.lstatSync(filePathTemp)
 
 			   		if (fileTemp.isDirectory()){
 
-			   			let DirTemp = await fs.readdir(filePathTemp)
+						let DirTemp = fs.readdirSync(filePathTemp, function(err, result) {
+							if(err) console.log('error', err);
+						})
 			   			let findEmpty = 1
 			   			for (const checkingfile of DirTemp){
 			   				if (checkingfile !== undefined && checkingfile !== null && checkingfile !== '' && checkingfile !== '.' && checkingfile !== '..' ){
@@ -263,438 +276,372 @@ var scanner = {
 			   						findEmpty=0
 			   					}
 
+			   			}}// end every file in folder
 
-
-			   			}}//every file in folder
-
-			   			if (this.deleteEmptyDir == 1 && findEmpty==1){
-			   				if (this.debug == 0){
-				   				await fs.rmdir(filePathTemp, { recursive: true })
+			   			if (config.deleteEmptyDir == 1 && findEmpty==1){
+			   				if (config.debug == 0){
+				   				fs.rmdirSync(filePathTemp, { recursive: true })
 				   			}
-				   			if (this.logs == 1){
-				   				await fs.appendFile('deleted_dirs.txt', filePathTemp+"\n");
+				   			if (config.logs == 1){
+				   				fs.appendFileSync('deleted_dirs.txt', filePathTemp+"\n");
 				   			}
 			   			}
 
-
-
-			   		}}}//every folder
+			}}}//end every folder
 
 		}
-	},
+	}
 
-	run: async function(){
-		var SongsDir
-		try{
-		  	SongsDir = await fs.readdir(this.Songspath);
-		}catch(errorSongsPath){
-			if (errorSongsPath.code === 'ENOENT'){
-				log ("Incorrect path to Songs")
+	Prepare(){
+		progress.setDefault(this.SongsDir.length,this.prepareTasks(1))
+		if (config.debug_cleanlogs){
+			deleteFile("deleted_beatmaps.txt")
+			deleteFile("deleted_shortmaps.txt")
+			deleteFile("deleted_dublicated_files.txt")
+			deleteFile("replaced_bgs.txt")
+			deleteFile("deleted_sprites.txt")
+			deleteFile("deleted_videos.txt")
+			deleteFile("files_not_in_beatmaps.txt")
+			deleteFile("deleted_dirs.txt")
+			deleteFile("bg_not_exists.html")
+			deleteFile("audio_not_exists.html")
+
+			log("All Logs cleared.")
+		}
+	}
+
+	StartCheckingSubSongs(){
+		progress.print()
+
+		this.tempVideos.length = 0
+		this.tempSprites.length = 0
+		this.tempBgs.length = 0
+		this.allFolderFiles.length = 0
+		this.otherFiles.length = 0
+		this.audioFiles.length = 0
+		this.bgFiles.length = 0
+		this.deleteShortMapsFiles.length = 0
+	}
+
+	checkFileSubSongs(){
+
+		if (path.extname(this.checkingfile) !== '.osu' && path.extname(this.checkingfile) !=='.osb') return
+
+		var tempdata = fs.readFileSync((this.CheckFileFullPath).replace(/\/+/g, '\\').replace(/\\+/g, '\\'),'utf8')			
+		this.otherFiles.push(this.checkingfile.toLowerCase())
+		tempdata = tempdata.toString().split("\n");
+
+		var eventscheck = 0
+		var tempdata_beatmapid = "0"
+		var tempdata_beatmapsetid = "-2"
+		var fullpathaudio = ""
+		var tempdata_audio = ""
+		var tempdatafilename = ""
+		var tempdata_mode = ""
+		var tempdata_diff = ""
+		var HitObjectsFind = 0
+		var HitObjects = 0
+
+		for(var i in tempdata) {
+
+			if(tempdata[i].startsWith("AudioFilename:") ){
+				tempdata_audio = getPropery(tempdata[i]).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+				fullpathaudio = (this.checkingSubSongsPath+"\\"+tempdata_audio).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+				this.otherFiles.push(tempdata_audio)
 			}
-			return
-		}
-	  	var itemnum = 0
-	  	ProgressBarDefault()
 
-		var bgExists = []
-		var bgEmpty = []
+			if(tempdata[i].startsWith("BeatmapID:") ){
+				tempdata_beatmapid = getPropery(tempdata[i])
+			}
 
- 		for (const folder of SongsDir){
+			if(tempdata[i].startsWith("BeatmapSetID:") ){
+				tempdata_beatmapsetid = getPropery(tempdata[i])
+			}
 
- 			PrintProgress(SongsDir.length,itemnum,1)
-			itemnum++
+			if(tempdata[i].startsWith("Version:") ){
+				tempdata_diff = getPropery(tempdata[i])
+			}
 
-	  		if (folder !== undefined && folder !== null && folder !== '' && folder !== '.' && folder !== '..' ){
-	  			var filePathTemp = (this.Songspath+'\\'+folder).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
-		   	 	var fileTemp = await fs.lstat(filePathTemp)
+			tempdatafilename = (this.CheckFileFullPath).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
 
-		   		if (fileTemp.isDirectory()){
+			if(tempdata[i].startsWith("Mode:") === true){
+				tempdata_mode = getPropery(tempdata[i])
+				if ((tempdata_mode == "0" && config.deletestd == 1) || 
+					(tempdata_mode == "1" && config.deletetaiko == 1) ||
+					(tempdata_mode == "2" && config.deletectb == 1) ||
+					(tempdata_mode == "3" && config.deletemania == 1)){
 
-		   			const DirTemp = await fs.readdir(filePathTemp)
+					if (config.logs == 1){
+						fs.appendFileSync('deleted_beatmaps.txt',  this.CheckFileFullPath+"\n");
+					}
+					if (config.debug == 0){
+						try{
+							fs.unlinkSync(this.CheckFileFullPath)
+						} catch (e){
+							fs.appendFileSync('deleted_beatmaps.txt', e+"\n");
+						}
+					}
+				}
+			}
+			
+			if (tempdata[i].startsWith("[Events]") === true){
+				eventscheck = 1
+			}
 
-		   			var tempSprites = []
-		   			tempSprites.length = 0
-		   			var tempVideos = []
-		   			tempVideos.length = 0
-		   			var tempBgs = []
-		   			tempBgs.length = 0
-		   			var allFolderFiles = []
-					allFolderFiles.length = 0
-					var otherFiles = []
-					otherFiles.length = 0
-					var audioFiles = []
-					audioFiles.length = 0
-					var bgFiles = []
-					bgFiles.length = 0			
-					var deleteShortMapsFiles = []
-					deleteShortMapsFiles.length = 0
+			if (tempdata[i].startsWith("[TimingPoints]") === true || tempdata[i].startsWith("[HitObjects]") === true){
+				eventscheck = 0
+			}
 
-		   			for (const checkingfile of DirTemp){
-		   				if (checkingfile !== undefined && checkingfile !== null && checkingfile !== '' && checkingfile !== '.' && checkingfile !== '..' ){
-		   					
-		   					if (path.extname(checkingfile)=='.osu' || path.extname(checkingfile)=='.osb'){
+			if (eventscheck == 1){
+						//не нужные строки
+				if (tempdata[i].length == 0 || tempdata[i].length == 1 || tempdata[i].length == 2 ||
+					tempdata[i].startsWith("[Events]") === true ||
+					tempdata[i].startsWith("//") === true ||
+					tempdata[i].startsWith(",") === true ||
 
-		   						var tempdata = await fs.readFile((filePathTemp+"\\"+checkingfile).replace(/\/+/g, '\\').replace(/\\+/g, '\\'),'utf8')
-		   						
-			   					otherFiles.push(checkingfile.toLowerCase())
-
-		   						tempdata = tempdata.toString().split("\n");
-		   						
-		   						var eventscheck = 0
-		   						var tempdata_beatmapid = "0"
-		   						var tempdata_beatmapsetid = "-2"
-		   						var fullpathaudio = ""
-		   						var tempdata_audio = ""
-		   						var tempdatafilename = ""
-		   						var tempdata_mode = ""
-		   						var tempdata_diff = ""
-		   						var HitObjectsFind = 0
-		   						var HitObjects = 0
-
-		   						for(i in tempdata) {
-		   								
-	   								if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1 || this.deletebeatmapsdublicates == 1 || this.checkexsitsbg == 1){
-
-	   									if(tempdata[i].startsWith("AudioFilename:") ){
-												tempdata_audio = tempdata[i].split(":")
-												tempdata_audio = (tempdata_audio[1].trim()).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-												fullpathaudio = (filePathTemp+"\\"+tempdata_audio).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-												otherFiles.push(tempdata_audio)
-											}
-		   								if(tempdata[i].startsWith("BeatmapID:") ){
-	   										tempdata_beatmapid = tempdata[i].split(":")
-	   										tempdata_beatmapid =  tempdata_beatmapid[1].trim()
-
-		   								}
-		   								if(tempdata[i].startsWith("BeatmapSetID:") ){
-	   										tempdata_beatmapsetid = tempdata[i].split(":")
-	   										tempdata_beatmapsetid =  tempdata_beatmapsetid[1].trim()
-	   									}
-	   									if(tempdata[i].startsWith("Version:") ){
-	   										tempdata_diff = tempdata[i].split(":")
-	   										tempdata_diff =  tempdata_diff[1].trim()
-	   									}
-	   									tempdatafilename = (folder+"\\"+checkingfile).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-	   								}
-
-	   								if (this.deletectb == 1 || this.deletemania == 1 ||this.deletetaiko == 1 ||this.deletestd == 1 ){
-	   									if(tempdata[i].startsWith("Mode:") === true){
-	   										tempdata_mode = tempdata[i].split(":")
-	   										tempdata_mode = tempdata_mode[1].trim()
-	   										if ((tempdata_mode == "0" && this.deletestd == 1) || 
-	   											(tempdata_mode == "1" && this.deletetaiko == 1) ||
-	   											(tempdata_mode == "2" && this.deletectb == 1) ||
-	   											(tempdata_mode == "3" && this.deletemania == 1)){
-
-	   											if (this.logs == 1){
-	   												await fs.appendFile('deleted_beatmaps.txt', filePathTemp+"\\"+checkingfile+"\n");
-	   											}
-	   											if (this.debug == 0){
-	   												try{
-		   												await fs.unlink(filePathTemp+"\\"+checkingfile)
-		   											} catch (e){
-		   												await fs.appendFile('deleted_beatmaps.txt', e+"\n");
-		   											}
-	   											}
-	   										}
-	   									}
-	   								}
-
-	   								if (this.deletesprites== 1 || this.deletevideos == 1 || this.checkexsitsbg == 1 || this.deleteFilesNotInBeatmap == 1){
-	   									var tempdata_sprite = ""
-	   									var tempdata_video = ""
-	   									var tempdata_bg = ""
-		   								if (tempdata[i].startsWith("[Events]") === true){
-		   									eventscheck = 1
-		   								}
-		   								if (tempdata[i].startsWith("[TimingPoints]") === true || tempdata[i].startsWith("[HitObjects]") === true){
-	   										eventscheck = 0
-	   									}
-
-		   								if (eventscheck == 1){
-		   											//не нужные строки
-		   									if (tempdata[i].length == 0 || tempdata[i].length == 1 || tempdata[i].length == 2 ||
-		   										tempdata[i].startsWith("[Events]") === true ||
-		   										tempdata[i].startsWith("//") === true ||
-		   										tempdata[i].startsWith(",") === true ||
-
-			   									tempdata[i].startsWith(" V,") === true  ||
-			   									tempdata[i].startsWith("  V,") === true  ||
-			   									tempdata[i].startsWith(" S,") === true  ||
-			   									tempdata[i].startsWith("_S,") === true  ||
-			   									tempdata[i].startsWith("  S,") === true  ||
-												tempdata[i].startsWith(" R,") === true  ||
-												tempdata[i].startsWith("  R,") === true  ||
-												tempdata[i].startsWith("_R,") === true  ||
-												tempdata[i].startsWith("__R,") === true  ||
-												tempdata[i].startsWith(" M,") === true  ||
-												tempdata[i].startsWith("_M,") === true  ||
-												tempdata[i].startsWith(" N,") === true  ||
-												tempdata[i].startsWith("  M,") === true  ||
-												tempdata[i].startsWith(" L,") === true  ||
-												tempdata[i].startsWith("_F,") === true  ||
-												tempdata[i].startsWith("__F,") === true  ||
-												tempdata[i].startsWith(" F,") === true  ||
-												tempdata[i].startsWith("  F,") === true  ||
-												tempdata[i].startsWith(" C,") === true  ||
-												tempdata[i].startsWith("  C,") === true  ||
-												tempdata[i].startsWith(" MY,") === true  ||
-												tempdata[i].startsWith("__MY,") === true  ||
-												tempdata[i].startsWith("_MY,") === true  ||
-												tempdata[i].startsWith("  MY,") === true  ||
-												tempdata[i].startsWith(" MX,") === true  ||
-												tempdata[i].startsWith("__MX,") === true  ||
-												tempdata[i].startsWith("_MX,") === true  ||
-												tempdata[i].startsWith("  MX,") === true  ||
-												tempdata[i].startsWith(" P,") === true ||
-												tempdata[i].startsWith("_P,") === true  ||
-												tempdata[i].startsWith("  P,") === true ||
-												tempdata[i].startsWith(" T,") === true ||
-												tempdata[i].startsWith("_L,") === true  ||
-												tempdata[i].startsWith("2,") === true ||
-												tempdata[i].startsWith("3,") === true
-											) {
-		   										//ничего не делать
-		   									} else {
-
-		   										if (this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
-			   										if (tempdata[i].startsWith("Animation,") === true || 
-				   									tempdata[i].startsWith("Sprite,") === true || 
-				   									tempdata[i].startsWith("Sample,") === true ||	
-													tempdata[i].startsWith("4,") === true  ||
-													tempdata[i].startsWith("5,") === true  ||
-													tempdata[i].startsWith("6,") === true ){
-
-			   											tempdata_sprite = tempdata[i].split(",")
-			   											tempdata_sprite = tempdata_sprite[3].replace(/"/g, "").trim().replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-														tempSprites.push(tempdata_sprite)
-													}
-													
-												}
-
-												if (this.deletevideos== 1 || this.deleteFilesNotInBeatmap == 1){
-													if (tempdata[i].startsWith("1,") === true || //video
-													tempdata[i].startsWith("Video,") === true){
-
-														tempdata_video = tempdata[i].split(",")
-			   											tempdata_video = tempdata_video[2].replace(/"/g, "").trim().replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-													   	tempVideos.push(tempdata_video)
-													}
-												}
-
-												if (this.checkexsitsbg == 1 || this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
-		   											if(tempdata[i].startsWith("0,") === true){  //bg
-
-			   											tempdata_bg = tempdata[i].split(",")
-			   											tempdata_bg = tempdata_bg[2].replace(/"/g, "").trim().replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-												      	tempBgs.push(tempdata_bg)
-													}
-												}
-		   									}
-
-		   								}
-
-									} 
-
-									if (this.deleteshortmaps == 1){
-											
-										if (tempdata[i].startsWith("[")== true ){
-											HitObjectsFind = 0
-										}
-
-										if (tempdata[i].toLowerCase().startsWith("[hitobjects]") == true ){
-											HitObjectsFind = 1
-
-										}
-										if (HitObjectsFind == 1){
-											HitObjects++
-										}
-
-										
-
-									}
-								}	//end for
-
-								if (this.deletebeatmapsdublicates == 1){
-									if (path.extname(checkingfile)=='.osu'){
-										if ( tempdata_beatmapid === "0" ||  tempdata_beatmapsetid ==="-1" || tempdata_beatmapsetid ==="-2" ){
-											//do nothing
-											
-										}else {
-											var NewBeatmap = {
-												"BeatmapID":tempdata_beatmapid,
-												"BeatmapSetID":tempdata_beatmapsetid,
-												"BeatmapFilename":tempdatafilename,
-												"BeatmapDifficulty":tempdata_diff
-											}
-
-											this.BeatmapsDB.push(NewBeatmap)
-											
-										}
-									}
-				   				}
-
-				   				if (this.checkexsitsbg == 1 || this.deleteFilesNotInBeatmap == 1 || this.deletesprites == 1){
-				   					for (var bg_i of tempBgs){
-				   						bgFiles.push({bg_i, tempdata_beatmapsetid})
-				   					}
-				   				}
-
-				   				if (this.checkaudioexists == 1 || this.deleteFilesNotInBeatmap == 1 || this.deletesprites == 1){
-									if (fullpathaudio !== ""){
-										audioFiles.push({fullpathaudio, tempdata_beatmapsetid, tempdata_audio})
-									}
-								}
-
-								if (this.deleteshortmaps == 1 && HitObjects<this.MinHitObjects){
-									if (path.extname(checkingfile)=='.osu'){
-										let filepathdeleteshortmap=folder+"\\"+checkingfile
-										let objdeleteshortmap = {HitObjects: HitObjects, ShortMapPath: filepathdeleteshortmap}
-										deleteShortMapsFiles.push(objdeleteshortmap)
-									}
-								}
-
-		   					}
-		   				}
-		   			}
-
-			   			
-		   			//uniques
-		   			if (this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1){
-			   			tempSprites = tempSprites.filter(function(elem, pos) {
-						    return tempSprites.indexOf(elem) == pos;
-						})
+					tempdata[i].startsWith(" V,") === true  ||
+					tempdata[i].startsWith("  V,") === true  ||
+					tempdata[i].startsWith(" S,") === true  ||
+					tempdata[i].startsWith("_S,") === true  ||
+					tempdata[i].startsWith("  S,") === true  ||
+					tempdata[i].startsWith(" R,") === true  ||
+					tempdata[i].startsWith("  R,") === true  ||
+					tempdata[i].startsWith("_R,") === true  ||
+					tempdata[i].startsWith("__R,") === true  ||
+					tempdata[i].startsWith(" M,") === true  ||
+					tempdata[i].startsWith("_M,") === true  ||
+					tempdata[i].startsWith(" N,") === true  ||
+					tempdata[i].startsWith("  M,") === true  ||
+					tempdata[i].startsWith(" L,") === true  ||
+					tempdata[i].startsWith("_F,") === true  ||
+					tempdata[i].startsWith("__F,") === true  ||
+					tempdata[i].startsWith(" F,") === true  ||
+					tempdata[i].startsWith("  F,") === true  ||
+					tempdata[i].startsWith(" C,") === true  ||
+					tempdata[i].startsWith("  C,") === true  ||
+					tempdata[i].startsWith(" MY,") === true  ||
+					tempdata[i].startsWith("__MY,") === true  ||
+					tempdata[i].startsWith("_MY,") === true  ||
+					tempdata[i].startsWith("  MY,") === true  ||
+					tempdata[i].startsWith(" MX,") === true  ||
+					tempdata[i].startsWith("__MX,") === true  ||
+					tempdata[i].startsWith("_MX,") === true  ||
+					tempdata[i].startsWith("  MX,") === true  ||
+					tempdata[i].startsWith(" P,") === true ||
+					tempdata[i].startsWith("_P,") === true  ||
+					tempdata[i].startsWith("  P,") === true ||
+					tempdata[i].startsWith(" T,") === true ||
+					tempdata[i].startsWith("_L,") === true  ||
+					tempdata[i].startsWith("2,") === true ||
+					tempdata[i].startsWith("3,") === true
+				) {
+					//ничего не делать
+				} else {						
+					if (tempdata[i].startsWith("Animation,") === true || 
+					tempdata[i].startsWith("Sprite,") === true || 
+					tempdata[i].startsWith("Sample,") === true ||	
+					tempdata[i].startsWith("4,") === true  ||
+					tempdata[i].startsWith("5,") === true  ||
+					tempdata[i].startsWith("6,") === true ){
+						this.tempSprites.push(getPropery(tempdata[i],',',3).replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase())
 					}
 					
-					if (this.deletevideos== 1 || this.deleteFilesNotInBeatmap == 1 ){
-						tempVideos = tempVideos.filter(function(elem, pos) {
-						    return tempVideos.indexOf(elem) == pos;
-						})
+
+					if (tempdata[i].startsWith("1,") === true || //video
+					tempdata[i].startsWith("Video,") === true){
+						this.tempVideos.push(getPropery(tempdata[i],',',2).replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase())
 					}
+
+					if(tempdata[i].startsWith("0,") === true){  //bg
+						
+						this.tempBgs.push(getPropery(tempdata[i],',',2).replace(/"/g, "").replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase())
+						
+					}
+				}
+
+			}
+
+			
+			if (config.deleteshortmaps == 1){
 					
-					if (this.deletesprites == 1 || this.checkexsitsbg == 1 || this.deleteFilesNotInBeatmap == 1){
-						var bgFiles2 = []
-						bgFiles.filter(function(el){
-							var i = bgFiles2.findIndex(x=>(x.bg_i === el.bg_i))
-							if(i <= -1){
-						        bgFiles2.push(el);
-							}
-							return null;
-						})
-						bgFiles = bgFiles2
+				if (tempdata[i].startsWith("[")== true ){
+					HitObjectsFind = 0
+				}
+
+				if (tempdata[i].toLowerCase().startsWith("[hitobjects]") == true ){
+					HitObjectsFind = 1
+				}
+
+				if (HitObjectsFind == 1){
+					HitObjects++
+				}
+
+			}
+		}	//end for
+		
+		if (config.deletebeatmapsdublicates == 1){
+			if (path.extname(this.checkingfile)=='.osu'){
+				if ( tempdata_beatmapid === "0" ||  tempdata_beatmapsetid ==="-1" || tempdata_beatmapsetid ==="-2" ){
+					//do nothing
+					
+				}else {
+					var NewBeatmap = {
+						"BeatmapID":tempdata_beatmapid,
+						"BeatmapSetID":tempdata_beatmapsetid,
+						"BeatmapFilename":tempdatafilename,
+						"BeatmapDifficulty":tempdata_diff
 					}
 
-					if (this.checkaudioexists == 1 || this.deletesprites == 1 || this.deleteFilesNotInBeatmap == 1 ){
-						var audioFiles2 = []
-						audioFiles.filter(function(el){
-							var i = audioFiles2.findIndex(x=>(x.fullpathaudio === el.fullpathaudio))
-							if(i <= -1){
-						        audioFiles2.push(el);
-							}
-							return null;
-						})
-						audioFiles = audioFiles2
-					}
-
-					if (this.deletesprites == 1){
-						tempSprites = tempSprites.filter (function(elem){
-							var spriteisbg = false
-							for (var tempbgcurrent of bgFiles){
-								if (tempbgcurrent.bg_i===elem){
-									spriteisbg = true
-									break
-								}
-							}
-							return !spriteisbg
-						})
-						tempSprites = tempSprites.filter (function(elem){
-							var spriteisaudio = false
-							for (var tempaudiocurrent of audioFiles){
-								if (tempaudiocurrent.tempdata_audio===elem){
-									spriteisaudio = true
-									break
-								}
-							}
-							return !spriteisaudio
-						})
-						for (var tempsprite of tempSprites){
-							var fullpathprite = (filePathTemp+"\\"+tempsprite).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-				      		await scanner.checkFileExists(fullpathprite,'sprite',"-2")
-						    
-						}
-					}
-
-					if (this.deletevideos== 1){
-						for (var tempvideo of tempVideos){
-							var fullpathvideo = (filePathTemp+"\\"+tempvideo).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-				      		await scanner.checkFileExists(fullpathvideo,'video',"-2")
-						    
-						}
-					}
-
-					if (this.checkaudioexists == 1){
-						for (var tempAudio of audioFiles){
-							await scanner.checkFileExists(tempAudio.fullpathaudio,'audio',tempAudio.tempdata_beatmapsetid)
-						}
-					}
-
-					if (this.checkexsitsbg == 1){
-
-						for (var bgFile of bgFiles){
-							var fullpathbg = (filePathTemp+"\\"+bgFile.bg_i).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-							var isBG = await scanner.checkFileExists(fullpathbg,'bg',bgFile.tempdata_beatmapsetid)
-							let bgName = bgFile.bg_i
-							let bgSetID = bgFile.tempdata_beatmapsetid
-							if (this.replaceEmptyBG == 1 && isBG === true){
-								bgExists.push ({fullpathbg, filePathTemp , bgName, bgSetID})
-							}
-							if (this.replaceEmptyBG == 1 && isBG === false){
-								bgEmpty.push ({fullpathbg, filePathTemp , bgName, bgSetID})
-							}
-						}
-					}
-
-		   			if (this.deleteFilesNotInBeatmap == 1){
-		   				tempBgs.length = 0
-		   				for (var tempbg of bgFiles){
-		   					tempBgs.push (tempbg.bg_i)
-		   				}
-						allFolderFiles = tempSprites.concat(tempBgs).concat(tempVideos).concat(otherFiles)
-						await this.checkInNotBeatmapFilesRecursive(filePathTemp,"",allFolderFiles)
-					}
-
-					if (this.deleteshortmaps == 1){
-
-						if (this.logs == 1){
-							for (var tempshortmap of deleteShortMapsFiles){
-				   				await fs.appendFile('deleted_shortmaps.txt', tempshortmap.HitObjects+" "+tempshortmap.ShortMapPath+"\n");
-			   				}
-			   				
-			   			}
-			   			if (this.debug==0){
-							for (var tempshortmap of deleteShortMapsFiles){
-								try{
-					   				await fs.unlink(this.Songspath+"\\"+tempshortmap.ShortMapPath)
-					   			} catch (e){
-									await fs.appendFile('deleted_shortmaps.txt', e+"\n");
-								}
-			   				}
-						}
-					}
-
-		   		}
-			} 
+					this.BeatmapsDB.push(NewBeatmap)
+					
+				}
+			}
 		}
 
-/////////////////////////
+		for (const bg_i of this.tempBgs){
+			this.bgFiles.push({bg_i, tempdata_beatmapsetid})
+		}
+		
+		if (fullpathaudio !== ""){
+			this.audioFiles.push({fullpathaudio, tempdata_beatmapsetid, tempdata_audio})
+		}
+		
+		if (config.deleteshortmaps == 1 && HitObjects<config.MinHitObjects){
+			if (path.extname(this.checkingfile)=='.osu'){
+				let filepathdeleteshortmap=this.CheckFileFullPath
+				let objdeleteshortmap = {HitObjects: HitObjects, ShortMapPath: filepathdeleteshortmap}
+				this.deleteShortMapsFiles.push(objdeleteshortmap)
+			}
+		}		
+	}
 
-		if (this.deletebeatmapsdublicates == 1){			
+	endCheckSubSongs(){
+		//uniques
+		if (config.deletesprites == 1 || config.deleteFilesNotInBeatmap == 1){
+			this.tempSprites = this.tempSprites.filter(onlyUnique)
+		}
+		
+		if (config.deletevideos== 1 || config.deleteFilesNotInBeatmap == 1 ){
+			this.tempVideos = this.tempVideos.filter(onlyUnique)
+		}
+		
+		if (config.deletesprites == 1 || config.checkexsitsbg == 1 || config.deleteFilesNotInBeatmap == 1){
+			
+			this.bgFiles = uniqueBG (this.bgFiles)
+
+			this.tempBgs.length = 0
+			for (var tempbg of this.bgFiles){
+				this.tempBgs.push (tempbg.bg_i)
+			}				
+			
+			this.tempBgs = this.tempBgs.filter(onlyUnique)
+			
+		}
+
+		if (config.checkaudioexists == 1 || config.deletesprites == 1 || config.deleteFilesNotInBeatmap == 1 ){
+			this.audioFiles = this.audioFiles.filter(uniqueAudio)
+		}
+
+		if (config.deletesprites == 1){
+			this.tempSprites = spritesWithoutBgAndAudio(this.tempSprites,this.tempBgs,this.audioFiles)
+
+			for (var tempsprite of this.tempSprites){
+				
+				var fullpathprite = ( this.checkingSubSongsPath+"\\"+tempsprite).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+
+				  this.checkFileExists(fullpathprite,'sprite',"-2")
+			}
+		}
+
+		if (config.deletevideos== 1){
+			for (var tempvideo of this.tempVideos){
+				var fullpathvideo = ( this.checkingSubSongsPath+"\\"+tempvideo).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+				  this.checkFileExists(fullpathvideo,'video',"-2")
+				
+			}
+		}
+
+		if (config.checkaudioexists == 1){
+			for (var tempAudio of this.audioFiles){
+				this.checkFileExists(tempAudio.fullpathaudio,'audio',tempAudio.tempdata_beatmapsetid)
+			}
+		}
+
+		if (config.checkexsitsbg == 1){
+
+			for (var bgFile of this.bgFiles){
+				var fullpathbg = ( this.checkingSubSongsPath+"\\"+bgFile.bg_i).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
+				var isBG = this.checkFileExists(fullpathbg,'bg',bgFile.tempdata_beatmapsetid)
+				let bgName = bgFile.bg_i
+				let bgSetID = bgFile.tempdata_beatmapsetid
+				let thispathfolder = this.checkingSubSongsPath
+				if (config.replaceEmptyBG == 1 && isBG === true){
+
+					this.bgExists.push ({fullpathbg, thispathfolder , bgName, bgSetID})
+				}
+				if (config.replaceEmptyBG == 1 && isBG === false){
+					this.bgEmpty.push ({fullpathbg, thispathfolder , bgName, bgSetID})
+				}
+			}
+		}
+
+		if (config.deleteFilesNotInBeatmap == 1){
+			this.allFolderFiles = this.tempSprites.concat(this.tempBgs).concat(this.tempVideos).concat(this.otherFiles)
+			this.allFolderFiles = this.allFolderFiles.filter(onlyUnique)
+			this.checkInNotBeatmapFilesRecursive(this.checkingSubSongsPath,"",this.allFolderFiles)
+		}
+
+		if (config.deleteshortmaps == 1){
+
+			if (config.logs == 1){
+				for (var tempshortmap of this.deleteShortMapsFiles){
+					   fs.appendFileSync('deleted_shortmaps.txt', tempshortmap.HitObjects+" "+tempshortmap.ShortMapPath+"\n");
+				   }
+				   
+			   }
+			   if (config.debug==0){
+				for (var tempshortmap of this.deleteShortMapsFiles){
+					try{
+						fs.unlinkSync(config.Songspath+"\\"+tempshortmap.ShortMapPath)
+					   } catch (e){
+						fs.appendFileSync('deleted_shortmaps.txt', e+"\n");
+					}
+				   }
+			}
+		}
+	}
+
+	replaceAllBG(){
+		//замена фонов рандомными
+		if (config.checkexsitsbg == 1){
+			if (config.replaceEmptyBG == 1){
+
+				progress.setDefault(this.bgEmpty.length,this.prepareTasks(3))
+
+				for (var bge of this.bgEmpty){
+					var bgCopy_IndexRandom = Math.floor(Math.random() * this.bgExists.length)
+					if (!accessSync(bge.fullpathbg)){
+						if (errorBgExists.code === 'ENOENT'){
+							fs.copyFile(this.bgExists[bgCopy_IndexRandom].fullpathbg,bge.fullpathbg)
+							//log ("copy "+this.bgExists[bgCopy_IndexRandom].fullpathbg+" to "+bge.fullpathbg)
+							if (config.logs == 1){
+								fs.appendFileSync('replaced_bgs.txt', "copy "+this.bgExists[bgCopy_IndexRandom].fullpathbg+" to "+bge.fullpathbg+"\n");
+							}
+						}
+					}
+
+					progress.print()
+				}
+			}
+		}	//end checkexsitsbg replaceEmptyBG
+	}
+
+	deleteDublicateOsuFiles(){
+		if (config.deletebeatmapsdublicates == 1){			
 			var beatmapsDB_sorting = []
 			var beatmapsDB_dublicates = []
-			var BeatmapsDB_length = this.BeatmapsDB.length
 
-			var el_num = 0
-			ProgressBarDefault()
+			progress.setDefault(this.BeatmapsDB.length,this.prepareTasks(2))
 
 			this.BeatmapsDB.filter(function(el){
 				var i = beatmapsDB_sorting.findIndex(x=>(x.BeatmapID === el.BeatmapID && 
@@ -705,8 +652,7 @@ var scanner = {
 					beatmapsDB_dublicates.push(el)
 				}
 
-				PrintProgress(BeatmapsDB_length,el_num ,2)
-				el_num++
+				progress.print()
 
 				return null;
 			})
@@ -718,56 +664,41 @@ var scanner = {
 
 			for (var dublicated_beatmap of beatmapsDB_dublicates){
 
-				if (this.logs == 1){
-					await fs.appendFile('deleted_dublicated_files.txt', this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
+				if (config.logs == 1){
+					fs.appendFileSync('deleted_dublicated_files.txt', config.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
 				}
-				if (this.debug==0){
+				if (config.debug==0){
 					try{
-						await fs.unlink(this.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
+						fs.unlinkSync(config.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
 					} catch (e){
-						await fs.appendFile('deleted_dublicated_files.txt', e+"\n");
+						fs.appendFileSync('deleted_dublicated_files.txt', e+"\n");
 					}
 				}
 			}
 			log ("All Dublicated Deleted.")
 
 		}	//end if deletebeatmapdublicates
+	}
 
-		//замена фонов рандомными
-		if (this.checkexsitsbg == 1){
-			if (this.replaceEmptyBG == 1){
-
-				var el_num = 0
-				ProgressBarDefault()
-
-				for (var bge of bgEmpty){
-					var bgCopy_IndexRandom = Math.floor(Math.random() * bgExists.length)
-					try{
-						await fs.access(bge.fullpathbg, fs.F_OK)
-					}catch(errorBgExists){
-						if (errorBgExists.code === 'ENOENT'){
-							fs.copyFile(bgExists[bgCopy_IndexRandom].fullpathbg,bge.fullpathbg)
-							//log ("copy "+bgExists[bgCopy_IndexRandom].fullpathbg+" to "+bge.fullpathbg)
-							if (this.logs == 1){
-								await fs.appendFile('replaced_bgs.txt', "copy "+bgExists[bgCopy_IndexRandom].fullpathbg+" to "+bge.fullpathbg+"\n");
-							}
-						}
-					}
-
-					PrintProgress(bgEmpty.length,el_num,3)
-					el_num++
-				}
-			}
-		}	//end checkexsitsbg replaceEmptyBG
-
-		await this.checkForEmptyDirs();
-
-	//end function run
+	run(){
+		this.Explore()
+		this.deleteDublicateOsuFiles()
+		this.replaceAllBG()
+		this.checkForEmptyDirs();
 	}
 
 }
 
-main = async function(){
-	return (await scanner.run())
+mainloop = function(){
+	var CleanerOsu1 = new CleanerOsu("C:\\osu",config.Songspath)
+
+	var StartScriptTime = new Date()
+	CleanerOsu1.run()
+	var EndScriptTime = new Date()
+
+	var diffTime = (EndScriptTime - StartScriptTime )/60000
+	log("start: "+StartScriptTime)
+	log("end: "+EndScriptTime)
+	log("diff: "+diffTime+" min")
 }
-main()
+mainloop()
