@@ -2,8 +2,6 @@ var log = console.log.bind(console)
 var fs = require('fs')
 var path = require('path')
 
-const { mainModule } = require('process')
-
 const config = require('./config.js')
 const progress = require('./progress-bar.js')
 const ExplorerOsu = require("./ExplorerOsu.js")
