@@ -1,6 +1,6 @@
 module.exports = {
 	//путь к папке Songs (обратный слеш в пути экранируется еще одним - \\ )
-	Songspath: 'F:\\Songs',
+	Songspath: 'F:\\Downloads\\MediaGet Downloads\\Songs',
 
 	///////////////////
 	//1 = да, 0 = нет
@@ -18,7 +18,7 @@ module.exports = {
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
-	deletetaiko: 1,
+	deletetaiko: 0,
 	//удалить карты мании
 	deletemania: 1,
 	//удалить карты catch the beat
@@ -34,7 +34,6 @@ module.exports = {
 
 	//проверка отсутствующих аудио файлов, результаты будут в txt файле
 	checkaudioexists: 1,
-	
 
 	//не удалять файлы (режим отладки скрипта)
 	debug: 0,

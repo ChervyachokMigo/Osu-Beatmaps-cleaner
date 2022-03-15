@@ -107,7 +107,11 @@ class CleanerOsu extends ExplorerOsu {
 			    		fs.appendFileSync('deleted_sprites.txt', filepath+"\n");
 			    	}
 		    		if (config.debug == 0){
-			    		fs.unlinkSync(filepath)
+						try{
+			    			fs.unlinkSync(filepath)
+						} catch (e) {
+							fs.appendFileSync('deleted_sprites.txt', filepath+"\n");
+						}
 			    	}
 		    	}
 		    }
@@ -117,7 +121,11 @@ class CleanerOsu extends ExplorerOsu {
 		    			fs.appendFileSync('deleted_videos.txt', filepath+"\n");
 		    		}
 		    		if (config.debug == 0){
-		    			fs.unlinkSync(filepath)
+		    			try{
+			    			fs.unlinkSync(filepath)
+						} catch (e) {
+							fs.appendFileSync('deleted_videos.txt', filepath+"\n");
+						}
 		    		}
 		    	}
 		    }
@@ -178,7 +186,12 @@ class CleanerOsu extends ExplorerOsu {
 							fs.appendFileSync('files_not_in_beatmaps.txt', fullpathinnotbeatmap+"\n");
 						}
 						if (config.debug == 0){
-							fs.unlinkSync(fullpathinnotbeatmap)
+							try{
+								fs.unlinkSync(fullpathinnotbeatmap)
+							} catch (e) {
+								fs.appendFileSync('files_not_in_beatmaps.txt', filepath+"\n");
+							}
+							
 						}
 					}	else{
 							this.checkInNotBeatmapFilesRecursive(fullpath,(relativepath+"\\"+file3).replace(/^\/|\/$/g, '').toLowerCase(),allfoldersfilesArray)
@@ -600,8 +613,8 @@ class CleanerOsu extends ExplorerOsu {
 			   if (config.debug==0){
 				for (var tempshortmap of this.deleteShortMapsFiles){
 					try{
-						fs.unlinkSync(config.Songspath+"\\"+tempshortmap.ShortMapPath)
-					   } catch (e){
+						fs.unlinkSync(tempshortmap.ShortMapPath)
+					} catch (e){
 						fs.appendFileSync('deleted_shortmaps.txt', e+"\n");
 					}
 				   }
