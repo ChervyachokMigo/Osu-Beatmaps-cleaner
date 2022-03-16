@@ -338,7 +338,7 @@ class CleanerOsu extends ExplorerOsu {
 	checkFileSubSongs(){
 		
 		var isOsu = path.extname(this.checkingfile) === '.osu';
-		var isOsb = path.extname(this.checkingfile) ==='.osb';
+		var isOsb = path.extname(this.checkingfile) === '.osb';
 
 		if ( !isOsu && !isOsb) return false
 
