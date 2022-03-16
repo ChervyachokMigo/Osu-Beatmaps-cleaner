@@ -1,0 +1,28 @@
+{
+  "name": "osu-beatmaps-cleaner-main",
+  "version": "1.0.0",
+  "description": "",
+  "main": "scaner.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChervyachokMigo/Osu-Beatmaps-cleaner.git"
+  },
+  "keywords": [
+    "osu",
+    "beatmaps",
+    "cleaner"
+  ],
+  "author": "sadgod",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ChervyachokMigo/Osu-Beatmaps-cleaner/issues"
+  },
+  "homepage": "https://github.com/ChervyachokMigo/Osu-Beatmaps-cleaner#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  }
+}
