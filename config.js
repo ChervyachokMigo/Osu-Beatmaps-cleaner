@@ -1,6 +1,6 @@
 module.exports = {
 	//путь к папке Songs (обратный слеш в пути экранируется еще одним - \\ )
-	Songspath: 'F:\\Downloads\\MediaGet Downloads\\Songs',
+	Songspath: 'D:\\Songs',
 
 	///////////////////
 	//1 = да, 0 = нет
@@ -14,15 +14,15 @@ module.exports = {
 	//удаляет скины, хитсаунды и файлы не относящиеся к карте
 	deleteFilesNotInBeatmap: 1,
 	//поиск дубликатов
-	deletebeatmapsdublicates: 0,
+	deletebeatmapsdublicates: 1,
 	//удалить все карты стандартной осу
 	deletestd: 0,
 	//удалить карты тайко
 	deletetaiko: 0,
 	//удалить карты мании
-	deletemania: 1,
+	deletemania: 0,
 	//удалить карты catch the beat
-	deletectb: 1,
+	deletectb: 0,
 	//удалить короткие карты
 	deleteshortmaps: 1,
 	MinHitObjects: 30,//минимальное количество обьектов в карте
@@ -39,7 +39,7 @@ module.exports = {
 	debug: 0,
 	debug_cleanlogs: 1,
 	//писать в txt файлы, что удалено. Не влияет на checkexsitsbg, checkaudioexists
-	logs: 0,
+	logs: 1,
 	//заменить ссылки на bloodcat
 	bloodcat: 0,
 }

@@ -85,7 +85,7 @@ function uniqueAudio(el,id,arr){
 
 class CleanerOsu extends ExplorerOsu {
 
-	BeatmapsDB = []
+	BeatmapsDBDublicates = []
 
 	bgExists = []
 	bgEmpty = []
@@ -135,7 +135,7 @@ class CleanerOsu extends ExplorerOsu {
 		} else {
 			if (filetype=='bg'){
 				if (config.checkexsitsbg == 1){
-					if (idmap === "-2" || idmap === "-1"){
+					if (idmap === -2 || idmap === -1){
 						fs.appendFileSync('bg_not_exists.html', "[no link] "+filepath+"\n</br>");
 					} else {
 						if (config.bloodcat == 1){
@@ -149,7 +149,7 @@ class CleanerOsu extends ExplorerOsu {
 			}
 			if (filetype=='audio'){
 				if (config.checkaudioexists == 1){
-					if (idmap === "-2" || idmap === "-1"){
+					if (idmap === -2 || idmap === -1){
 						fs.appendFileSync('audio_not_exists.html',"[no link] "+filepath+"\n</br>");
 					} else {
 						if (config.bloodcat == 1){
@@ -237,6 +237,9 @@ class CleanerOsu extends ExplorerOsu {
 			if (config.checkaudioexists == 1){
 				tasks.push ("Checking audio exists")
 			}
+			if (config.deletebeatmapsdublicates == 1){
+				tasks.push ("Drafting beatmaps list for dublicates")
+			}
 		}
 		if (task==2){
 			tasks.push ("Delete dublicates")
@@ -256,7 +259,7 @@ class CleanerOsu extends ExplorerOsu {
 	checkForEmptyDirs(){
 		if (config.deleteEmptyDir == 1){
 
-			let SongsDir = fs.readdirSync(config.Songspath, function(err, result) {
+			let SongsDir = fs.readdirSync(config.Songspath, function(err) {
 			if(err) {
 				log ("Incorrect path to Songs")
 				throw new Error('Incorrect path to Songs')
@@ -271,19 +274,17 @@ class CleanerOsu extends ExplorerOsu {
 				progress.print()
 
 
-	 			if (folder !== undefined && folder !== null && folder !== '' && folder !== '.' && folder !== '..' ){
+	 			if (folder){
 		  			let filePathTemp = (config.Songspath+'\\'+folder).replace(/\/+/g, '\\').replace(/\\+/g, '\\')
 			   	 	let fileTemp = fs.lstatSync(filePathTemp)
 
 			   		if (fileTemp.isDirectory()){
 
-						let DirTemp = fs.readdirSync(filePathTemp, function(err, result) {
-							if(err) console.log('error', err);
-						})
+						let DirTemp = fs.readdirSync(filePathTemp)
 			   			let findEmpty = 1
 			   			for (const checkingfile of DirTemp){
-			   				if (checkingfile !== undefined && checkingfile !== null && checkingfile !== '' && checkingfile !== '.' && checkingfile !== '..' ){
-			   					if (path.extname(checkingfile)=='.osu'){
+			   				if (typeof checkingfile !== 'undefined' ){
+			   					if (path.extname(checkingfile) === '.osu'){
 			   						findEmpty=0
 			   					}
 
@@ -335,21 +336,26 @@ class CleanerOsu extends ExplorerOsu {
 	}
 
 	checkFileSubSongs(){
+		
+		var isOsu = path.extname(this.checkingfile) === '.osu';
+		var isOsb = path.extname(this.checkingfile) ==='.osb';
 
-		if (path.extname(this.checkingfile) !== '.osu' && path.extname(this.checkingfile) !=='.osb') return
+		if ( !isOsu && !isOsb) return false
 
-		var tempdata = fs.readFileSync((this.CheckFileFullPath).replace(/\/+/g, '\\').replace(/\\+/g, '\\'),'utf8')			
+
+		var tempdatafilename = this.CheckFileFullPath.toLowerCase().replace(/\/+/g, '\\').replace(/\\+/g, '\\')
+
+		var tempdata = fs.readFileSync(this.CheckFileFullPath,'utf8')			
 		this.otherFiles.push(this.checkingfile.toLowerCase())
 		tempdata = tempdata.toString().split("\n");
 
 		var eventscheck = 0
-		var tempdata_beatmapid = "0"
-		var tempdata_beatmapsetid = "-2"
+		var tempdata_beatmapid = 0
+		var tempdata_beatmapsetid = -2
 		var fullpathaudio = ""
 		var tempdata_audio = ""
-		var tempdatafilename = ""
 		var tempdata_mode = ""
-		var tempdata_diff = ""
+		//var tempdata_diff = ""
 		var HitObjectsFind = 0
 		var HitObjects = 0
 
@@ -362,20 +368,14 @@ class CleanerOsu extends ExplorerOsu {
 			}
 
 			if(tempdata[i].startsWith("BeatmapID:") ){
-				tempdata_beatmapid = getPropery(tempdata[i])
+				tempdata_beatmapid = parseInt(getPropery(tempdata[i]))
 			}
 
 			if(tempdata[i].startsWith("BeatmapSetID:") ){
-				tempdata_beatmapsetid = getPropery(tempdata[i])
+				tempdata_beatmapsetid = parseInt(getPropery(tempdata[i]))
 			}
 
-			if(tempdata[i].startsWith("Version:") ){
-				tempdata_diff = getPropery(tempdata[i])
-			}
-
-			tempdatafilename = (this.CheckFileFullPath).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-
-			if(tempdata[i].startsWith("Mode:") === true){
+			if(tempdata[i].startsWith("Mode:") ){
 				tempdata_mode = getPropery(tempdata[i])
 				if ((tempdata_mode == "0" && config.deletestd == 1) || 
 					(tempdata_mode == "1" && config.deletetaiko == 1) ||
@@ -396,7 +396,11 @@ class CleanerOsu extends ExplorerOsu {
 			}
 			
 			if (tempdata[i].startsWith("[Events]") === true){
-				eventscheck = 1
+				if (config.deletesprites == 1 || config.deleteFilesNotInBeatmap == 1 ||
+				config.deletevideos== 1 || config.checkexsitsbg == 1){
+
+					eventscheck = 1
+				}
 			}
 
 			if (tempdata[i].startsWith("[TimingPoints]") === true || tempdata[i].startsWith("[HitObjects]") === true){
@@ -491,19 +495,19 @@ class CleanerOsu extends ExplorerOsu {
 		}	//end for
 		
 		if (config.deletebeatmapsdublicates == 1){
-			if (path.extname(this.checkingfile)=='.osu'){
-				if ( tempdata_beatmapid === "0" ||  tempdata_beatmapsetid ==="-1" || tempdata_beatmapsetid ==="-2" ){
+			if ( isOsu ){
+				if ( tempdata_beatmapid === 0 ||  tempdata_beatmapsetid ===-1 || tempdata_beatmapsetid ===-2 ){
 					//do nothing
 					
-				}else {
+				} else {
 					var NewBeatmap = {
-						"BeatmapID":tempdata_beatmapid,
-						"BeatmapSetID":tempdata_beatmapsetid,
-						"BeatmapFilename":tempdatafilename,
-						"BeatmapDifficulty":tempdata_diff
+						BeatmapID: tempdata_beatmapid,
+						BeatmapSetID: tempdata_beatmapsetid,
+						BeatmapFilename: tempdatafilename,
+						BeatmapFolder: this.CurrentCheckingDir
 					}
 
-					this.BeatmapsDB.push(NewBeatmap)
+					this.BeatmapsDBDublicates.push(NewBeatmap)
 					
 				}
 			}
@@ -518,9 +522,8 @@ class CleanerOsu extends ExplorerOsu {
 		}
 		
 		if (config.deleteshortmaps == 1 && HitObjects<config.MinHitObjects){
-			if (path.extname(this.checkingfile)=='.osu'){
-				let filepathdeleteshortmap=this.CheckFileFullPath
-				let objdeleteshortmap = {HitObjects: HitObjects, ShortMapPath: filepathdeleteshortmap}
+			if ( isOsu ){
+				let objdeleteshortmap = {HitObjects: HitObjects, FullMapPath: this.CheckFileFullPath}
 				this.deleteShortMapsFiles.push(objdeleteshortmap)
 			}
 		}		
@@ -560,14 +563,14 @@ class CleanerOsu extends ExplorerOsu {
 				
 				var fullpathprite = ( this.checkingSubSongsPath+"\\"+tempsprite).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
 
-				  this.checkFileExists(fullpathprite,'sprite',"-2")
+				  this.checkFileExists(fullpathprite,'sprite',-2)
 			}
 		}
 
 		if (config.deletevideos== 1){
 			for (var tempvideo of this.tempVideos){
 				var fullpathvideo = ( this.checkingSubSongsPath+"\\"+tempvideo).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-				  this.checkFileExists(fullpathvideo,'video',"-2")
+				  this.checkFileExists(fullpathvideo,'video',-2)
 				
 			}
 		}
@@ -582,7 +585,7 @@ class CleanerOsu extends ExplorerOsu {
 
 			for (var bgFile of this.bgFiles){
 				var fullpathbg = ( this.checkingSubSongsPath+"\\"+bgFile.bg_i).replace(/\/+/g, '\\').replace(/\\+/g, '\\').toLowerCase()
-				var isBG = this.checkFileExists(fullpathbg,'bg',bgFile.tempdata_beatmapsetid)
+				var isBG = this.checkFileExists(fullpathbg, 'bg', bgFile.tempdata_beatmapsetid)
 				let bgName = bgFile.bg_i
 				let bgSetID = bgFile.tempdata_beatmapsetid
 				let thispathfolder = this.checkingSubSongsPath
@@ -606,14 +609,14 @@ class CleanerOsu extends ExplorerOsu {
 
 			if (config.logs == 1){
 				for (var tempshortmap of this.deleteShortMapsFiles){
-					   fs.appendFileSync('deleted_shortmaps.txt', tempshortmap.HitObjects+" "+tempshortmap.ShortMapPath+"\n");
+					   fs.appendFileSync('deleted_shortmaps.txt', tempshortmap.HitObjects+" "+tempshortmap.FullMapPath+"\n");
 				   }
 				   
 			   }
 			   if (config.debug==0){
 				for (var tempshortmap of this.deleteShortMapsFiles){
 					try{
-						fs.unlinkSync(tempshortmap.ShortMapPath)
+						fs.unlinkSync(tempshortmap.FullMapPath)
 					} catch (e){
 						fs.appendFileSync('deleted_shortmaps.txt', e+"\n");
 					}
@@ -633,8 +636,7 @@ class CleanerOsu extends ExplorerOsu {
 					var bgCopy_IndexRandom = Math.floor(Math.random() * this.bgExists.length)
 					if (!accessSync(bge.fullpathbg)){
 						if (errorBgExists.code === 'ENOENT'){
-							fs.copyFile(this.bgExists[bgCopy_IndexRandom].fullpathbg,bge.fullpathbg)
-							//log ("copy "+this.bgExists[bgCopy_IndexRandom].fullpathbg+" to "+bge.fullpathbg)
+							fs.copyFile( this.bgExists[bgCopy_IndexRandom].fullpathbg, bge.fullpathbg )
 							if (config.logs == 1){
 								fs.appendFileSync('replaced_bgs.txt', "copy "+this.bgExists[bgCopy_IndexRandom].fullpathbg+" to "+bge.fullpathbg+"\n");
 							}
@@ -652,35 +654,40 @@ class CleanerOsu extends ExplorerOsu {
 			var beatmapsDB_sorting = []
 			var beatmapsDB_dublicates = []
 
-			progress.setDefault(this.BeatmapsDB.length,this.prepareTasks(2))
+			progress.setDefault(this.BeatmapsDBDublicates.length,this.prepareTasks(2))
 
-			this.BeatmapsDB.filter(function(el){
-				var i = beatmapsDB_sorting.findIndex(x=>(x.BeatmapID === el.BeatmapID && 
-					x.tempdata_beatmapsetid === el.tempdata_beatmapsetid && x.BeatmapDifficulty === el.BeatmapDifficulty))
+			this.BeatmapsDBDublicates.filter(function(el){
+				var i = beatmapsDB_sorting.findIndex(x=> 
+					x.BeatmapID === el.BeatmapID && 
+					x.BeatmapSetID === el.BeatmapSetID && 
+					x.BeatmapFolder !== el.BeatmapFolder )
+
 				if(i <= -1){
 			      beatmapsDB_sorting.push(el);
 				} else {
+					el.DublicateBeatmap = beatmapsDB_sorting[i]
 					beatmapsDB_dublicates.push(el)
 				}
 
 				progress.print()
 
-				return null;
+				return false
 			})
-			this.BeatmapsDB = beatmapsDB_sorting
+			this.BeatmapsDBDublicates = beatmapsDB_sorting
 
 			log ("Dublicated finded: "+beatmapsDB_dublicates.length)
-			//fs.writeFile('BeatmapsDB.json',JSON.stringify(this.BeatmapsDB));
+			//fs.writeFileSync('BeatmapsDB.json',JSON.stringify(this.BeatmapsDB));
 			//fs.writeFile('beatmapsDB_dublicates.json',JSON.stringify(beatmapsDB_dublicates));
 
 			for (var dublicated_beatmap of beatmapsDB_dublicates){
 
 				if (config.logs == 1){
-					fs.appendFileSync('deleted_dublicated_files.txt', config.Songspath+"\\"+dublicated_beatmap.BeatmapFilename+"\n");
+					//fs.appendFileSync('deleted_dublicated_files.txt', `${dublicated_beatmap.DublicateBeatmap.BeatmapFilename} => ${dublicated_beatmap.BeatmapFilename}\n`);
+					fs.appendFileSync('deleted_dublicated_files.txt', `${dublicated_beatmap.BeatmapFilename}\n`);
 				}
 				if (config.debug==0){
 					try{
-						fs.unlinkSync(config.Songspath+"\\"+dublicated_beatmap.BeatmapFilename)
+						fs.unlinkSync(dublicated_beatmap.BeatmapFilename)
 					} catch (e){
 						fs.appendFileSync('deleted_dublicated_files.txt', e+"\n");
 					}
@@ -688,7 +695,7 @@ class CleanerOsu extends ExplorerOsu {
 			}
 			log ("All Dublicated Deleted.")
 
-		}	//end if deletebeatmapdublicates
+		}
 	}
 
 	run(){
