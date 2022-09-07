@@ -5,6 +5,6 @@ set NODE_OPTIONS=--max-old-space-size=8192
 
 :start
 
-"%programfiles%\nodejs\node" scaner.js
+node scaner.js
 
 pause
