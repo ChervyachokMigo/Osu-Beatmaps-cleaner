@@ -1,4 +1,5 @@
-var fs = require('fs')
+var fs = require('fs');
+var path = require('path');
 
 module.exports =  class ExplorerOsu {
     debug
@@ -16,10 +17,10 @@ module.exports =  class ExplorerOsu {
 
     canDoMainLoop = true
 
-    constructor(path,Songs){
+    constructor(osu_path){
         this.debug = 0;
-        this.Osu_path = path;
-        this.Songs_path = Songs;
+        this.Osu_path = osu_path;
+        this.Songs_path = path.join(osu_path, 'Songs');
     }
 
     Prepare(){

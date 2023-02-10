@@ -1,10 +1,12 @@
-var log = console.log.bind(console)
-var fs = require('fs')
-var path = require('path')
+var log = console.log.bind(console);
+var fs = require('fs');
+var path = require('path');
 
-const config = require('./config.js')
-const progress = require('./progress-bar.js')
-const ExplorerOsu = require("./ExplorerOsu.js")
+const ExplorerOsu = require("./ExplorerOsu.js");
+const osu_tools = require('osu_tools');
+
+const config = require('./config.js');
+const progress = require('./progress-bar.js');
 
 const existsFile = (file) => {
 	try {
@@ -50,11 +52,6 @@ function uniqueBG(bgs){
 		}
 	}
 	return res
-}
-
-function error1(vari){
-	log(vari)
-	throw new Error
 }
 
 function spritesWithoutBgAndAudio(spr, bgs, audios){
@@ -359,6 +356,8 @@ class CleanerOsu extends ExplorerOsu {
 		var HitObjectsFind = 0
 		var HitObjects = 0
 
+        var modeFind = 0
+
 		for(var i in tempdata) {
 
 			if(tempdata[i].startsWith("AudioFilename:") ){
@@ -393,7 +392,10 @@ class CleanerOsu extends ExplorerOsu {
 						}
 					}
 				}
+                modeFind = 1
 			}
+
+
 			
 			if (tempdata[i].startsWith("[Events]") === true){
 				if (config.deletesprites == 1 || config.deleteFilesNotInBeatmap == 1 ||
@@ -494,6 +496,19 @@ class CleanerOsu extends ExplorerOsu {
 			}
 		}	//end for
 		
+        if (config.deletestd == 1 && modeFind == 0){
+            if (config.logs == 1){
+                fs.appendFileSync('deleted_beatmaps.txt',  this.CheckFileFullPath+"\n");
+            }
+            if (config.debug == 0){
+                try{
+                    fs.unlinkSync(this.CheckFileFullPath)
+                } catch (e){
+                    fs.appendFileSync('deleted_beatmaps.txt', e+"\n");
+                }
+            }
+        }
+
 		if (config.deletebeatmapsdublicates == 1){
 			if ( isOsu ){
 				if ( tempdata_beatmapid === 0 ||  tempdata_beatmapsetid ===-1 || tempdata_beatmapsetid ===-2 ){
@@ -708,10 +723,13 @@ class CleanerOsu extends ExplorerOsu {
 }
 
 mainloop = function(){
-	var CleanerOsu1 = new CleanerOsu("C:\\osu",config.Songspath)
+
+	var CleanerOsu1 = new CleanerOsu( "E:\\osu" )
 
 	var StartScriptTime = new Date()
+
 	CleanerOsu1.run()
+
 	var EndScriptTime = new Date()
 
 	var diffTime = (EndScriptTime - StartScriptTime )/60000

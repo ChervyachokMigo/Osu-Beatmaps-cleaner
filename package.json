@@ -23,6 +23,12 @@
   "homepage": "https://github.com/ChervyachokMigo/Osu-Beatmaps-cleaner#readme",
   "dependencies": {
     "fs": "^0.0.1-security",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "ts-node": "^10.9.1",
+    "osu_tools": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.19",
+    "typescript": "^4.9.5"
   }
 }
