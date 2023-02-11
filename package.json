@@ -25,7 +25,7 @@
     "colors": "^1.4.0",
     "fs": "^0.0.1-security",
     "fs-extra": "^11.1.0",
-    "osu_tools": "git://github.com/ChervyachokMigo/osu-tools.git",
+    "osu-tools": "github:ChervyachokMigo/osu-tools",
     "path": "^0.12.7",
     "ts-node": "^10.9.1"
   },

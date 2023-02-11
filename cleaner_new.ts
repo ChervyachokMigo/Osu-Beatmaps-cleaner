@@ -1,11 +1,9 @@
 
-import { Dirent, appendFile, appendFileSync, 
-    existsSync, 
-    mkdirSync, 
-    readdirSync, renameSync, unlink, unlinkSync } from 'fs';
+import {  appendFileSync,  existsSync,  mkdirSync, 
+    readdirSync, renameSync, rmSync, unlinkSync } from 'fs';
 
 import { osu_file_beatmap_property, beatmap_data, songs_get_all_beatmaps,
-    beatmap_event_type, beatmap_event_layer, scanner_options } from 'osu_tools';
+    beatmap_event_type, beatmap_event_layer, scanner_options } from 'osu-tools';
 
 //import * as progress from './progress-bar.js';
 
@@ -24,6 +22,7 @@ const props: osu_file_beatmap_property[] = [
     bp.events_samples,
     bp.events_sprites,
     bp.events_videos,
+    bp.general_beatmap_filename,
     bp.general_gamemode,
     bp.general_audio_filename,
     bp.metadata_beatmap_md5,
@@ -50,6 +49,16 @@ try{
     throw new Error (err as string);
 }
 
+const delete_beatmaps_gamemode = [
+    'delete_std_beatmaps',
+    'delete_taiko_beatmaps',
+    'delete_ctb_beatmaps',
+    'delete_mania_beatmaps'
+];
+
+const config_has_delete_beatmaps = config[delete_beatmaps_gamemode[0] as keyof typeof config] ||
+    config[delete_beatmaps_gamemode[1] as keyof typeof config] || config[delete_beatmaps_gamemode[2] as keyof typeof config] ||
+    config[delete_beatmaps_gamemode[3] as keyof typeof config];
 
 if (config.debug_cleanlogs){
     const log_files = [
@@ -57,7 +66,8 @@ if (config.debug_cleanlogs){
         'delete_BackgroundSprites', 'delete_OtherSprites', 'unknown_file',
         'delete_FilesNotInBeatmap_failed', 'delete_Backgrounds_failed', 'delete_Videos_failed', 'delete_Samples_failed', 
         'delete_BackgroundAnimations_failed', 'delete_OtherAnimations_failed','delete_BackgroundSprites_failed', 'delete_OtherSprites_failed',
-        'missing_BGs', 'missing_BGs_beamaps_id'
+        'missing_BGs', 'missing_BGs_beatmaps_id',
+        delete_beatmaps_gamemode[0], delete_beatmaps_gamemode[1],delete_beatmaps_gamemode[2],delete_beatmaps_gamemode[3]
     ];
 
     for (let file of log_files){
@@ -69,12 +79,10 @@ if (config.debug_cleanlogs){
     }
 }
 
-
-
 songs_get_all_beatmaps( osu_path, props, options,
-    ( beatmaps: beatmap_data[], current_folder: Dirent ) => {
+    ( beatmaps: beatmap_data[], current_folder: string ) => {
 
-    var full_folder_path = path.join(songs_path, current_folder.name);
+    var full_folder_path = path.join(songs_path, current_folder);
 
     //get unique files
 
@@ -145,7 +153,7 @@ songs_get_all_beatmaps( osu_path, props, options,
             } else {
 
                 if (config.debug){
-                    appendFileSync("unknown_file.txt", path.join(current_folder.name, "???") + "\n");
+                    appendFileSync("unknown_file.txt", path.join(current_folder, "???") + "\n");
                 }
             
             }
@@ -208,38 +216,69 @@ songs_get_all_beatmaps( osu_path, props, options,
     BackgroundSprites = filterFilesInFolder(BackgroundSprites);
     OtherSprites = filterFilesInFolder(OtherSprites);
     
-    handleDeletion(current_folder.name, filesNotInBeatmap, 'delete_FilesNotInBeatmap');
+    handleDeletion(current_folder, filesNotInBeatmap, 'delete_FilesNotInBeatmap');
 
-    handleDeletion(current_folder.name, BGFiles, 'delete_Backgrounds');
-    handleDeletion(current_folder.name, VideoFiles, 'delete_Videos');
-    handleDeletion(current_folder.name, SamplesFiles, 'delete_Samples');
-    handleDeletion(current_folder.name, BackgroundAnimations, 'delete_BackgroundAnimations');
-    handleDeletion(current_folder.name, OtherAnimations, 'delete_OtherAnimations');
-    handleDeletion(current_folder.name, BackgroundSprites, 'delete_BackgroundSprites');
-    handleDeletion(current_folder.name, OtherSprites, 'delete_OtherSprites');
+    handleDeletion(current_folder, BGFiles, 'delete_Backgrounds');
+    handleDeletion(current_folder, VideoFiles, 'delete_Videos');
+    handleDeletion(current_folder, SamplesFiles, 'delete_Samples');
+    handleDeletion(current_folder, BackgroundAnimations, 'delete_BackgroundAnimations');
+    handleDeletion(current_folder, OtherAnimations, 'delete_OtherAnimations');
+    handleDeletion(current_folder, BackgroundSprites, 'delete_BackgroundSprites');
+    handleDeletion(current_folder, OtherSprites, 'delete_OtherSprites');
 
     if (config.check_missing_bg){
         const missing_BGs = BGFiles_in_beatmap.filter( file => !BGFiles.includes(file) );
         if (missing_BGs.length > 0) {
-            appendFileSync('missing_BGs.txt', `${current_folder.name}:\n${missing_BGs.join('\n')}\n` );
+            appendFileSync('missing_BGs.txt', `${current_folder}:\n${missing_BGs.join('\n')}\n` );
 
             let beatmapsetId;
 
-            if (!isNaN(Number(current_folder.name.split(' ')[0]))) {
-                beatmapsetId = Number(current_folder.name.split(' ')[0]);
+            if (!isNaN(Number(current_folder.split(' ')[0]))) {
+                beatmapsetId = Number(current_folder.split(' ')[0]);
             } else if (!isNaN(Number(beatmaps[0].metadata.beatmapset_id))) {
                 beatmapsetId = Number(beatmaps[0].metadata.beatmapset_id);
             } else {
-                console.log('missing bg map is missing beatmapset id!', current_folder.name);
+                console.log('missing bg map is missing beatmapset id!', current_folder);
             }
 
             if (beatmapsetId){
-                appendFileSync('missing_BGs_beamaps_id.txt', `${beatmapsetId}\n` );
+                appendFileSync('missing_BGs_beatmaps_id.txt', `${beatmapsetId}\n` );
             }
             
         }
     }
 
+    if (config_has_delete_beatmaps){
+        delete_beatmaps_gamemode.forEach( (config_key, delete_gamemode ) => {
+            
+            if (config[config_key as keyof typeof config]){
+
+                let beatmaps_need_delete = 
+                    beatmaps.filter(beatmap=> beatmap.general.gamemode === delete_gamemode);
+
+                let beatmaps_delete_filenames: string[] = [];
+
+                beatmaps_need_delete.forEach(beatmap=>{
+                    beatmaps_delete_filenames.push(beatmap.general.beatmap_filename as string)
+                });
+
+                handleDeletion(current_folder, beatmaps_delete_filenames, config_key);
+            }
+        });
+    }
+    
+    if (config.delete_empty_directories){
+        let files_after_deletion = readdirSync(full_folder_path).filter( file => path.extname(file) === '.osu' )
+        if (files_after_deletion.length === 0){
+            if (config.debug){
+                console.log('need to delete folder '+current_folder);
+            } else if (config.backup_files){
+                renameSync(full_folder_path, path.join( config.backup_path, current_folder) )
+            } else {
+                rmSync(full_folder_path, { recursive: true, force: true });
+            }
+        }
+    }
 
 });
 
@@ -282,15 +321,13 @@ function handleDeletion(currentFolderName: string, files: string[], configKey: s
         return;
     }
 
-    
     const logFile = `${configKey}${config.backup_files ? "_failed" : ""}.txt`;
-    
 
     files.forEach(file => {
         const filePath =  path.join(songs_path, currentFolderName, file);
         try {
             if (config.debug) {
-                appendFileSync( `${configKey}.txt`, `${currentFolderName}:\n${files.join('\n')}\n` );
+                appendFileSync( `${configKey}.txt`, `${currentFolderName}: ${file}\n` );
             } else if (config.backup_files) {
                 backupFile( filePath, path.join( config.backup_path, currentFolderName, path.dirname(file) ) );
             } else {

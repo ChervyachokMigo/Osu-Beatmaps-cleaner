@@ -5,15 +5,14 @@ module.exports = {
 	///////////////////
 	//1 = да, 0 = нет
 	///////////////////
-
-	//архивировать файлы перед удалением с сохранением путей
-	backup_files: 1,
-	backup_path: 'D:/SongsBackup',
-
 	//не удалять файлы (режим отладки скрипта)
 	debug: 0,
 	//удалить логи перед запуском
 	debug_cleanlogs: 1,
+
+	//архивировать файлы перед удалением с сохранением путей
+	backup_files: 1,
+	backup_path: 'D:/SongsBackup',	
 
 	//ВНИМАНИЕ: это удаляет ВСЕ ФОНЫ с карт
 	delete_Backgrounds: 0, ///!!!!!!!!
@@ -35,23 +34,24 @@ module.exports = {
 	//проверка отсутствующих бекграундов, результаты будут в txt файле
 	check_missing_bg: 1,
 
+	//удалить все карты стандартной осу
+	delete_std_beatmaps: 0,
+
+	//удалить карты тайко
+	delete_taiko_beatmaps: 0,
+
+	//удалить карты catch the beat
+	delete_ctb_beatmaps: 0,
+
+	//удалить карты мании
+	delete_mania_beatmaps: 0,
+
 	//Удаляет пустые папки без найденных osu файлов
-	//deleteEmptyDir: 1,
+	delete_empty_directories: 1,
 
 	//поиск дубликатов
 	//deletebeatmapsdublicates: 0,
 
-	//удалить все карты стандартной осу
-	//deletestd: 0,
-
-	//удалить карты тайко
-	//deletetaiko: 0,
-
-	//удалить карты мании
-	//deletemania: 0,
-
-	//удалить карты catch the beat
-	//deletectb: 0,
 
 	//удалить короткие карты
 	//deleteshortmaps: 0,

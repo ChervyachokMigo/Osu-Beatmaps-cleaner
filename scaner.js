@@ -3,7 +3,6 @@ var fs = require('fs');
 var path = require('path');
 
 const ExplorerOsu = require("./ExplorerOsu.js");
-const osu_tools = require('osu_tools');
 
 const config = require('./config.js');
 const progress = require('./progress-bar.js');
