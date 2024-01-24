@@ -1,6 +1,6 @@
 module.exports = {
 	//путь к папке osu
-	osu_path: 'E:/osu!',
+	osu_path: 'D:/osu!',
 
 	///////////////////
 	//1 = да, 0 = нет
@@ -11,7 +11,7 @@ module.exports = {
 	debug_cleanlogs: 1,
 
 	//архивировать файлы перед удалением с сохранением путей
-	backup_files: 1,
+	backup_files: 0,
 	backup_path: 'D:/SongsBackup',	
 
 	//ВНИМАНИЕ: это удаляет ВСЕ ФОНЫ с карт
@@ -47,7 +47,7 @@ module.exports = {
 	delete_mania_beatmaps: 0,
 
 	//Удаляет пустые папки без найденных osu файлов
-	delete_empty_directories: 1,
+	delete_empty_directories: 0,
 
 	//поиск дубликатов
 	//deletebeatmapsdublicates: 0,

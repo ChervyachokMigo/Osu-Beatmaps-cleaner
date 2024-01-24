@@ -9,7 +9,7 @@ import { osu_file_beatmap_property, beatmap_data, songs_get_all_beatmaps,
 
 import * as config from  './config.js';
 
-import path from 'path';
+import * as path from 'path';
 
 const osu_path = path.normalize(config.osu_path);
 const songs_path = path.normalize(path.join(osu_path, 'Songs'));
