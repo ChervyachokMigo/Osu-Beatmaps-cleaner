@@ -1,7 +1,4 @@
 /node_modules
 /built
-Osu-Beatmaps-cleaner.7z
+*.code-workspace
 *.txt
-test.js
-*.tgz
-cleaner_new.js
