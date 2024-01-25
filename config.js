@@ -6,12 +6,12 @@ module.exports = {
 	//1 = да, 0 = нет
 	///////////////////
 	//не удалять файлы (режим отладки скрипта)
-	debug: 0,
+	debug: true,
 	//удалить логи перед запуском
-	debug_cleanlogs: 1,
+	debug_cleanlogs: true,
 
 	//архивировать файлы перед удалением с сохранением путей
-	backup_files: 0,
+	backup_files: false,
 	backup_path: 'D:/SongsBackup',	
 
 	//ВНИМАНИЕ: это удаляет ВСЕ ФОНЫ с карт

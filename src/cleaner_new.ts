@@ -5,14 +5,14 @@ import {  appendFileSync,  existsSync,  mkdirSync,
 import { osu_file_beatmap_property, beatmap_data, songs_get_all_beatmaps,
     beatmap_event_type, beatmap_event_layer, scanner_options } from 'osu-tools';
 
-//import * as progress from './progress-bar.js';
-
-import * as config from  './config.js';
+import * as config from  '../config';
 
 import * as path from 'path';
+import { backupFile, create_dir, filterUnique, getFilesSync } from './tools';
 
 const osu_path = path.normalize(config.osu_path);
 const songs_path = path.normalize(path.join(osu_path, 'Songs'));
+const backup_path = path.normalize(config.backup_path);
 
 const bp = osu_file_beatmap_property;
 
@@ -39,10 +39,10 @@ const options: scanner_options =  {
 console.time('complete');
 
 try{
-    checkAndCreateDirSync(config.osu_path);
+    create_dir(osu_path);
 
     if (config.backup_files){
-        checkAndCreateDirSync(config.backup_path);
+        create_dir(backup_path);
     }
 
 } catch (err: unknown) {
@@ -74,7 +74,9 @@ if (config.debug_cleanlogs){
         try {
             unlinkSync(`${file}.txt`);
         } catch (e) {
-            console.log(`${file}.txt не был удален т.к. не существует`);
+            if (config.debug){
+                console.log(`${file}.txt не был удален т.к. не существует`);
+            }
         }
     }
 }
@@ -82,56 +84,54 @@ if (config.debug_cleanlogs){
 songs_get_all_beatmaps( osu_path, props, options,
     ( beatmaps: beatmap_data[], current_folder: string ) => {
 
-    var full_folder_path = path.join(songs_path, current_folder);
+    const full_folder_path = path.join(songs_path, current_folder);
 
-    //get unique files
+    const beatmap_files: { [key:string]: string[] } = {
+        audio: [],
+        bg: [],
+        video: [],
+        sample: [],
+        bga: [],
+        animation: [],
+        bgs: [],
+        sprite: [],
+    };
 
-    var FilesFromBeatmaps : string[] = [];
+    beatmaps.forEach( ({ general, events }) => {
 
-    var AudioFiles : string[] = [];
-    var BGFiles : string[] = [];
-    var VideoFiles : string[] = [];
-    var SamplesFiles : string[] = [];
-    var BackgroundAnimations : string[] = [];
-    var OtherAnimations : string[] = [];
-    var BackgroundSprites : string[] = [];
-    var OtherSprites : string[] = [];
-        
-    beatmaps.forEach( (beatmap) => {
-
-        if (beatmap.general.audio_filename && beatmap.general.audio_filename.length>0){
-            AudioFiles.push(path.normalize(beatmap.general.audio_filename.toLowerCase()));
+        if (general.audio_filename && general.audio_filename.length>0){
+            beatmap_files.audio.push(path.normalize(general.audio_filename.toLowerCase()));
         }
 
-        if (beatmap.events && beatmap.events.length > 0) {
+        if (events && events.length > 0) {
 
-            beatmap.events.forEach((ev) => {
+            events.forEach((ev) => {
 
             if (ev.file_name && ev.file_name.length > 0) {
             let event_filename_lowercase = path.normalize(ev.file_name.toLowerCase());
                 switch (ev.type) {
 
                 case beatmap_event_type.background:
-                    BGFiles.push(event_filename_lowercase);
+                    beatmap_files.bg.push(event_filename_lowercase);
                     break;
 
                 case beatmap_event_type.video:
-                    VideoFiles.push(event_filename_lowercase);
+                    beatmap_files.video.push(event_filename_lowercase);
                     break;
 
                 case beatmap_event_type.sample:
-                    SamplesFiles.push(event_filename_lowercase);
+                    beatmap_files.sample.push(event_filename_lowercase);
                     break;
 
                 case beatmap_event_type.animation:
 
                     switch (ev.layer) {
                     case beatmap_event_layer.Background:
-                        BackgroundAnimations.push(event_filename_lowercase);
+                        beatmap_files.bga.push(event_filename_lowercase);
                         break;
 
                     default:
-                        OtherAnimations.push(event_filename_lowercase);
+                        beatmap_files.animation.push(event_filename_lowercase);
                         break;
                     }
                     break;
@@ -140,10 +140,10 @@ songs_get_all_beatmaps( osu_path, props, options,
                     
                     switch (ev.layer) {
                     case beatmap_event_layer.Background:
-                        BackgroundSprites.push(event_filename_lowercase);
+                        beatmap_files.bgs.push(event_filename_lowercase);
                         break;
                     default:
-                        OtherSprites.push(event_filename_lowercase);
+                        beatmap_files.sprite.push(event_filename_lowercase);
                         break;
                     }
                     break;
@@ -164,70 +164,54 @@ songs_get_all_beatmaps( osu_path, props, options,
 
     });
 
-    const filterUnique = (array: any[]) => array.filter((value: any, index: any) => array.indexOf(value) === index);
+    let FilesFromBeatmaps : string[] = [];
 
-    AudioFiles = filterUnique(AudioFiles);
-    BGFiles = filterUnique(BGFiles);
-    VideoFiles = filterUnique(VideoFiles);
-    SamplesFiles = filterUnique(SamplesFiles);
-    BackgroundAnimations = filterUnique(BackgroundAnimations);
-    OtherAnimations = filterUnique(OtherAnimations);
-    BackgroundSprites = filterUnique(BackgroundSprites);
-    OtherSprites = filterUnique(OtherSprites);
+    for (let key of Object.keys(beatmap_files)){
+        beatmap_files[key] = filterUnique(beatmap_files[key]);
+        FilesFromBeatmaps = FilesFromBeatmaps.concat(beatmap_files[key]);
+    }
 
-    const fileArrays = [
-        AudioFiles, BGFiles, VideoFiles, SamplesFiles, BackgroundAnimations,
-        OtherAnimations, BackgroundSprites, OtherSprites
-    ]
-
-    fileArrays.forEach( val => {
-        if (val.length > 0) {
-            FilesFromBeatmaps.push(...val);
-        }
-    });
-
-    //get folder filelist
-    const allFilesInFolder = getFilesSync(full_folder_path, full_folder_path);
+    //получить список всех файлов
+    const allFilesInFolder = getFilesSync(full_folder_path);
 
     const filesNotInBeatmap = allFilesInFolder
-        .filter(file => !FilesFromBeatmaps.includes(file))
+        .filter(file => FilesFromBeatmaps.indexOf(file) === -1)
         .filter(file => !file.endsWith('.osu') && !file.endsWith('.osb'));
 
     //убрать из списков бгшки
     if (!config.delete_Backgrounds){
-        const filterBackgrounds = (filesList:string[]) => filesList.filter(file => !BGFiles.includes(file));
-        VideoFiles = filterBackgrounds(VideoFiles);
-        BackgroundAnimations = filterBackgrounds(BackgroundAnimations);
-        OtherAnimations = filterBackgrounds(OtherAnimations);
-        BackgroundSprites = filterBackgrounds(BackgroundSprites);
-        OtherSprites = filterBackgrounds(OtherSprites);
+        for (let key of ['video', 'bga', 'animation', 'bgs', 'sprite']){
+            beatmap_files[key] = beatmap_files[key].filter(file => beatmap_files.bg.indexOf(file) === -1);
+        }
     }
 
-    const BGFiles_in_beatmap = BGFiles.slice();
+    const BGFiles_in_beatmap =  beatmap_files.bg.slice();
 
     //оставить только существующие файлы
-    const filterFilesInFolder = (filesList:string[]) => filesList.filter(file => allFilesInFolder.includes(file));
-
-    BGFiles = filterFilesInFolder(BGFiles);
-    VideoFiles = filterFilesInFolder(VideoFiles);
-    SamplesFiles = filterFilesInFolder(SamplesFiles);
-    BackgroundAnimations = filterFilesInFolder(BackgroundAnimations);
-    OtherAnimations = filterFilesInFolder(OtherAnimations);
-    BackgroundSprites = filterFilesInFolder(BackgroundSprites);
-    OtherSprites = filterFilesInFolder(OtherSprites);
+    for (let key of ['bg', 'video', 'sample', 'bga', 'animation', 'bgs', 'sprite']){
+        beatmap_files[key] = beatmap_files[key].filter(file => allFilesInFolder.indexOf(file) > -1);
+    }
     
+    //удаление файлов по каждой категории
     handleDeletion(current_folder, filesNotInBeatmap, 'delete_FilesNotInBeatmap');
 
-    handleDeletion(current_folder, BGFiles, 'delete_Backgrounds');
-    handleDeletion(current_folder, VideoFiles, 'delete_Videos');
-    handleDeletion(current_folder, SamplesFiles, 'delete_Samples');
-    handleDeletion(current_folder, BackgroundAnimations, 'delete_BackgroundAnimations');
-    handleDeletion(current_folder, OtherAnimations, 'delete_OtherAnimations');
-    handleDeletion(current_folder, BackgroundSprites, 'delete_BackgroundSprites');
-    handleDeletion(current_folder, OtherSprites, 'delete_OtherSprites');
+    const log_name: { [key:string]: string } = {
+        bg: 'delete_Backgrounds',
+        video: 'delete_Videos',
+        sample: 'delete_Samples',
+        bga: 'delete_BackgroundAnimations',
+        animation: 'delete_OtherAnimations',
+        bgs: 'delete_BackgroundSprites',
+        sprite: 'delete_OtherSprites'
+    }
 
+    for (let key of ['bg', 'video', 'sample', 'bga', 'animation', 'bgs', 'sprite']){
+        handleDeletion(current_folder, beatmap_files[key], log_name[key]);
+    }
+
+    //проверка отсутствующих бг
     if (config.check_missing_bg){
-        const missing_BGs = BGFiles_in_beatmap.filter( file => !BGFiles.includes(file) );
+        const missing_BGs = BGFiles_in_beatmap.filter( file => beatmap_files.bg.indexOf(file) === -1);
         if (missing_BGs.length > 0) {
             appendFileSync('missing_BGs.txt', `${current_folder}:\n${missing_BGs.join('\n')}\n` );
 
@@ -248,32 +232,28 @@ songs_get_all_beatmaps( osu_path, props, options,
         }
     }
 
+    //удаление по модам
     if (config_has_delete_beatmaps){
         delete_beatmaps_gamemode.forEach( (config_key, delete_gamemode ) => {
             
-            if (config[config_key as keyof typeof config]){
+            if (config[config_key as keyof typeof config]){                    
 
-                let beatmaps_need_delete = 
-                    beatmaps.filter(beatmap=> beatmap.general.gamemode === delete_gamemode);
-
-                let beatmaps_delete_filenames: string[] = [];
-
-                beatmaps_need_delete.forEach(beatmap=>{
-                    beatmaps_delete_filenames.push(beatmap.general.beatmap_filename as string)
-                });
+                const beatmaps_delete_filenames: string[] = beatmaps.filter(beatmap => beatmap.general.gamemode === delete_gamemode)
+                    .map( b => b.general.beatmap_filename as string)
 
                 handleDeletion(current_folder, beatmaps_delete_filenames, config_key);
             }
         });
     }
     
+    //удаление пустых папок
     if (config.delete_empty_directories){
         let files_after_deletion = readdirSync(full_folder_path).filter( file => path.extname(file) === '.osu' )
         if (files_after_deletion.length === 0){
             if (config.debug){
                 console.log('need to delete folder '+current_folder);
             } else if (config.backup_files){
-                renameSync(full_folder_path, path.join( config.backup_path, current_folder) )
+                renameSync(full_folder_path, path.join( backup_path, current_folder) )
             } else {
                 rmSync(full_folder_path, { recursive: true, force: true });
             }
@@ -283,38 +263,6 @@ songs_get_all_beatmaps( osu_path, props, options,
 });
 
 console.timeEnd('complete');
-
-
-
-function getFilesSync(dir: string, baseDir: string, files: string[] = []) {
-
-    const filesInDirectory = readdirSync(dir, {withFileTypes: true});
-  
-    for ( const file of filesInDirectory ) {
-
-        const filePath = path.join(dir, file.name);
-
-        if ( file.isFile() ) {
-
-            files.push( path.normalize(filePath.replace(baseDir, '').substring(1).toLowerCase()) );
-
-        } else if ( file.isDirectory() ) {
-
-            getFilesSync(filePath, baseDir, files);
-        
-        }
-    }
-  
-    return files;
-}
-
-
-
-function checkAndCreateDirSync(dir: string){
-    if (dir && !existsSync(dir)) {
-        mkdirSync(dir , { recursive: true });
-    }
-}
 
 function handleDeletion(currentFolderName: string, files: string[], configKey: string) {
     if (files.length === 0 || !config[configKey as keyof typeof config]) {
@@ -329,7 +277,7 @@ function handleDeletion(currentFolderName: string, files: string[], configKey: s
             if (config.debug) {
                 appendFileSync( `${configKey}.txt`, `${currentFolderName}: ${file}\n` );
             } else if (config.backup_files) {
-                backupFile( filePath, path.join( config.backup_path, currentFolderName, path.dirname(file) ) );
+                backupFile( filePath, path.join( backup_path, currentFolderName, path.dirname(file) ) );
             } else {
                 unlinkSync( filePath );
             }
@@ -340,13 +288,3 @@ function handleDeletion(currentFolderName: string, files: string[], configKey: s
     });
 }
 
-function backupFile(filePath: string, backupDir: string, backupFileName: string | null = null): void {
-    const fileName = backupFileName || path.basename(filePath);
-    const backupPath = path.join(backupDir, fileName);
-
-    if (!existsSync(backupDir)) {
-        mkdirSync(backupDir, { recursive: true });
-    }
-
-    renameSync(filePath, backupPath);
-}

@@ -4,7 +4,10 @@
   "description": "",
   "main": "scaner.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "del *.txt",
+    "start": "ts-node src/cleaner_new.ts & pause",
+    "build": "npx tsc",
+    "start_build": "node built/src/cleaner_new.js"
   },
   "repository": {
     "type": "git",
@@ -29,7 +32,7 @@
     "path": "^0.12.7"
   },
   "devDependencies": {
-    "@types/node": "^18.13.0",
+    "@types/node": "^18.19.9",
     "ts-node": "^10.9.2",
     "typescript": "^4.9.5"
   }

@@ -1,5 +1,6 @@
 {
-  "exclude": ["./*.js", "./config.js"],
+  "include": ["./src/**/*"],
+  "exclude": ["./built/**/*"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
 
