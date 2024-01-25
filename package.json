@@ -4,10 +4,10 @@
   "description": "",
   "main": "scaner.js",
   "scripts": {
-    "clean": "del *.txt",
-    "start": "ts-node src/cleaner_new.ts & pause",
+    "clean": "del /F /S /Q built\\ & rd /S /Q built & del *.txt",
+    "start_ts": "ts-node src/cleaner_new.ts & pause",
     "build": "npx tsc",
-    "start_build": "node built/src/cleaner_new.js"
+    "start": "npm run clean & npm run build & node built/src/cleaner_new.js"
   },
   "repository": {
     "type": "git",

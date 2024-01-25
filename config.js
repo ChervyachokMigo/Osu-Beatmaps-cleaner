@@ -47,7 +47,7 @@ module.exports = {
 	delete_mania_beatmaps: 0,
 
 	//Удаляет пустые папки без найденных osu файлов
-	delete_empty_directories: 0,
+	delete_empty_directories: 1,
 
 	//поиск дубликатов
 	//deletebeatmapsdublicates: 0,
