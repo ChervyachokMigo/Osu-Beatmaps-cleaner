@@ -286,8 +286,12 @@ function handleDeletion(currentFolderName: string, files: string[], configKey: s
             } else {
                 unlinkSync( filePath );
             }
-        } catch (e) {
-            console.log(e);
+        } catch (e: any) {
+            if (e.code === 'ENOENT'){
+                console.log(e.syscall, 'failed', e.path);
+            } else {
+                console.log(e);
+            }
             appendFileSync(logFile, `${filePath}\n`);
         }
     });
