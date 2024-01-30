@@ -6,7 +6,7 @@ module.exports = {
 	//1 = да, 0 = нет
 	///////////////////
 	//не удалять файлы (режим отладки скрипта)
-	debug: true,
+	debug: false,
 	//удалить логи перед запуском
 	debug_cleanlogs: true,
 
@@ -41,13 +41,19 @@ module.exports = {
 	delete_taiko_beatmaps: 0,
 
 	//удалить карты catch the beat
-	delete_ctb_beatmaps: 0,
+	delete_ctb_beatmaps: 1,
 
 	//удалить карты мании
-	delete_mania_beatmaps: 0,
+	delete_mania_beatmaps: 1,
 
 	//Удаляет пустые папки без найденных osu файлов
 	delete_empty_directories: 1,
+
+	//удаление всех грейвярд карт
+	delete_graveyard_beatmaps: 0,
+
+	//удаление всех не субмитнутых карт
+	delete_unsubmitted_beatmaps: 0,
 
 	//поиск дубликатов
 	//deletebeatmapsdublicates: 0,

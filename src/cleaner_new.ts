@@ -3,7 +3,8 @@ import {  appendFileSync,  existsSync,  mkdirSync,
     readdirSync, renameSync, rmSync, unlinkSync } from 'fs';
 
 import { osu_file_beatmap_property, beatmap_data, songs_get_all_beatmaps,
-    beatmap_event_type, beatmap_event_layer, scanner_options } from 'osu-tools';
+    beatmap_event_type, beatmap_event_layer, scanner_options,
+    osu_db_load, beatmap_property, RankedStatus } from 'osu-tools';
 
 import * as config from  '../config';
 
@@ -13,6 +14,7 @@ import { backupFile, create_dir, filterUnique, getFilesSync } from './tools';
 const osu_path = path.normalize(config.osu_path);
 const songs_path = path.normalize(path.join(osu_path, 'Songs'));
 const backup_path = path.normalize(config.backup_path);
+const osu_db_path = path.join(config.osu_path, 'osu!.db');
 
 const bp = osu_file_beatmap_property;
 
@@ -101,6 +103,34 @@ const log_name: { [key:string]: string } = {
 
 const set_bg_delete: string[] = ['video', 'bga', 'animation', 'bgs', 'sprite'];
 const set_all_files: string[] = ['bg', 'video', 'sample', 'bga', 'animation', 'bgs', 'sprite']; //without audio
+
+//удаление по статусу
+const beatmap_statuses_result = osu_db_load(osu_db_path, [
+    beatmap_property.folder_name,
+    beatmap_property.osu_filename,
+    beatmap_property.ranked_status
+]);
+
+for (let beatmap of beatmap_statuses_result.beatmaps){
+    if (config.delete_graveyard_beatmaps && beatmap.ranked_status_int === RankedStatus.graveyard ){
+        try {
+            const beatmap_path = path.join(songs_path, beatmap.folder_name as string, beatmap.osu_filename as string);
+            rmSync(beatmap_path);
+            console.log('deleted', beatmap_path);
+        } catch (e) {
+            //file not exists
+        }
+    }
+    if (config.delete_unsubmitted_beatmaps && beatmap.ranked_status_int === RankedStatus.unsubmitted ){
+        try {
+            const beatmap_path = path.join(songs_path, beatmap.folder_name as string, beatmap.osu_filename as string);
+            rmSync(beatmap_path);
+            console.log('deleted', beatmap_path);
+        } catch (e) {
+            //file not exists
+        }
+    }
+}
 
 songs_get_all_beatmaps( osu_path, props, options,
     ( beatmaps: beatmap_data[], current_folder: string ) => {
