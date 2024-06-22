@@ -35,7 +35,10 @@ const props: osu_file_beatmap_property[] = [
 
 const options: scanner_options =  { 
     is_read_only: true, 
-    is_hit_objects_only_count: true 
+    is_hit_objects_only_count: true,
+	songs_folder: osu_path,
+	is_display_complete_time: false,
+	is_check_osb: true
 };
 
 console.time('complete');
