@@ -7,7 +7,8 @@
     "clean": "del /F /S /Q built\\ & rd /S /Q built & del *.txt",
     "start_ts": "ts-node src/cleaner_new.ts & pause",
     "build": "npx tsc",
-    "start": "npm run clean & npm run build & node built/src/cleaner_new.js"
+    "start": "npm run clean & npm run build & node built/src/cleaner_new.js",
+	"watch": "npx tsc --watch"
   },
   "repository": {
     "type": "git",
