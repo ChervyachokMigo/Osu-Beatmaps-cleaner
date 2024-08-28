@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, renameSync } from "fs";
-import path from "path";
+import { existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
+import path from "node:path";
 
 
 export const create_dir = async (dir: string) => {

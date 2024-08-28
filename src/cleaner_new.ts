@@ -1,6 +1,6 @@
 
 import {  appendFileSync,  existsSync,  mkdirSync, 
-    readdirSync, renameSync, rmSync, unlinkSync } from 'fs';
+    readdirSync, renameSync, rmSync, unlinkSync } from 'node:fs';
 
 import { osu_file_beatmap_property, beatmap_data, songs_get_all_beatmaps,
     beatmap_event_type, beatmap_event_layer, scanner_options,

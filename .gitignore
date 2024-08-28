@@ -1,4 +1,4 @@
-/node_modules
-/built
+/node_modules/
+/built/
 *.code-workspace
 *.txt

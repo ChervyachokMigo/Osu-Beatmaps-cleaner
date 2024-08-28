@@ -8,7 +8,7 @@
     "start_ts": "ts-node src/cleaner_new.ts & pause",
     "build": "npx tsc",
     "start": "npm run clean & npm run build & node built/src/cleaner_new.js",
-	"watch": "npx tsc --watch"
+    "watch": "npx tsc --watch"
   },
   "repository": {
     "type": "git",
@@ -26,11 +26,7 @@
   },
   "homepage": "https://github.com/ChervyachokMigo/Osu-Beatmaps-cleaner#readme",
   "dependencies": {
-    "colors": "^1.4.0",
-    "fs": "^0.0.1-security",
-    "fs-extra": "^11.2.0",
-    "osu-tools": "github:ChervyachokMigo/osu-tools",
-    "path": "^0.12.7"
+    "osu-tools": "github:ChervyachokMigo/osu-tools"
   },
   "devDependencies": {
     "@types/node": "^18.19.9",
